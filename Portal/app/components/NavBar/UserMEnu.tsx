@@ -1,21 +1,19 @@
+"use client";
+
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { SafeUser } from "@/app/types";
 import MenuItem from "./MenuItem";
 import useLoginModal from "@/app/hooks/useLoginModal";
 import useRegisterModal from "@/app/hooks/useRegisterModal";
-import Avatar from "../Avatar";
 import { TiUser } from "react-icons/ti";
 import { AiOutlineLogout } from "react-icons/ai";
-import { MdOutlineFavoriteBorder, MdHistory } from "react-icons/md";
-import { IoIosLogIn } from "react-icons/io";
 import { GrUserNew } from "react-icons/gr";
 import { PiSignInLight } from "react-icons/pi";
-import { IoFitnessSharp } from "react-icons/io5";
 import { BsPlus } from "react-icons/bs";
-import { PiMoneyBold } from "react-icons/pi";
 import { useRouter } from "next/navigation";
 import { BiHome } from "react-icons/bi";
+
 interface UserMenuProps {
   currentUser?: SafeUser | null;
 }
@@ -25,121 +23,82 @@ const UserMenu: React.FC<UserMenuProps> = ({ currentUser }) => {
   const registerModal = useRegisterModal();
   const loginModal = useLoginModal();
   const router = useRouter();
+
   const toggleOpen = () => setIsOpen(!isOpen);
+
+  // Admin view
   if (currentUser?.email === "guri2022@hotmail.com") {
     return (
-      <div className="dropdown dropdown-end">
-        <button
-          onClick={toggleOpen}
-          className="btn btn-ghost btn-circle avatar"
-        >
-          <div className="w-10 rounded-full">
-            <Avatar
-              src={currentUser?.image}
-              alt={currentUser?.name || "User avatar"}
-            />
-          </div>
-        </button>
+      <div className="relative ml-4">
+        <button onClick={toggleOpen} className="btn btn-primary">Admin Menu</button>
         {isOpen && (
-          <>
-            {currentUser.email === "guri2022@hotmail.com" ? (
-              <ul
-                tabIndex={0}
-                className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
-              >
-                <li className="text-center text-primary text-xl">
-                  Welcome To Admin Portal
-                </li>
-                <MenuItem
-                  label="Add New"
-                  onClick={() => {}}
-                  icon={<BsPlus />}
-                />
-                <MenuItem
-                  label="Logout"
-                  onClick={() => {
-                    signOut({
-                      redirect: false,
-                      callbackUrl:
-                        '"https://main.d1emtjc4kvp6hm.amplifyapp.com/"',
-                    });
-                  }}
-                  icon={<AiOutlineLogout />}
-                />
-              </ul>
-            ) : (
-              <div>You need to be admin to see this</div>
-            )}
-          </>
+          <ul className="absolute right-0 mt-2 z-50 w-52 p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box">
+            <li className="text-center text-primary text-xl">
+              Welcome To Admin Portal
+            </li>
+            <MenuItem label="Add New" onClick={() => {}} icon={<BsPlus />} />
+            <MenuItem
+              label="Logout"
+              onClick={() =>
+                signOut({
+                  redirect: false,
+                  callbackUrl: "https://main.d1emtjc4kvp6hm.amplifyapp.com/",
+                })
+              }
+              icon={<AiOutlineLogout />}
+            />
+          </ul>
         )}
       </div>
     );
   }
+
+  // User or Guest view
   return (
-    <div className="flex flex-row ml-2">
-      <div className="dropdown dropdown-end">
-      
-        <button
-          onClick={toggleOpen}
-          className="btn btn-ghost btn-circle avatar"
-        >
-          {" "}
-          <div className="w-10 rounded-full">
-            <Avatar
-              src={currentUser?.image}
-              alt={currentUser?.name || "User avatar"}
-            />
-          </div>
-        </button>
-        {isOpen && (
-          <>
-            {currentUser ? (
-              <ul
-                tabIndex={0}
-                className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
-              >
-                <li className="text-center text-red-300 text-xl">
-                  Hi,{currentUser.name}
-                </li>
-                <MenuItem
-                  label="Home"
-                  onClick={() => router.push("/")}
-                  icon={<BiHome />}
-                />
-                <MenuItem
-                  label="Profile "
-                  onClick={() => {
-                    router.push("/Profile");
-                  }}
-                  icon={<TiUser />}
-                />
-              
-                <MenuItem
-                  label="Logout"
-                  onClick={signOut}
-                  icon={<AiOutlineLogout />}
-                />
-              </ul>
-            ) : (
-              <ul
-                tabIndex={0}
-                className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
-              >
-                <MenuItem
-                  label="Login"
-                  onClick={loginModal.onOpen}
-                  icon={<PiSignInLight />}
-                />
-                <MenuItem
-                  label="Sign Up"
-                  onClick={registerModal.onOpen}
-                  icon={<GrUserNew />}
-                />
-              </ul>
-            )}
-          </>
-        )}
-      </div>
+    <div className="relative ml-4">
+      {currentUser ? (
+        <>
+          <button onClick={toggleOpen} className="btn btn-primary">
+            Menu
+          </button>
+          {isOpen && (
+            <ul className="absolute right-0 mt-2 z-50 w-52 p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box">
+              <li className="text-center text-red-300 text-xl">
+                Hi, {currentUser.name}
+              </li>
+              <MenuItem label="Home" onClick={() => router.push("/")} icon={<BiHome />} />
+              <MenuItem
+                label="Profile"
+                onClick={() => router.push("/Profile")}
+                icon={<TiUser />}
+              />
+              <MenuItem label="Logout" onClick={signOut} icon={<AiOutlineLogout />} />
+            </ul>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col gap-2 items-start">
+          {/* Login Button */}
+          <button
+            onClick={loginModal.onOpen}
+            className="text-white hover:text-green-300 transition-colors p-2 flex items-center space-x-2"
+            title="Login"
+          >
+            <PiSignInLight size={22} />
+        
+          </button>
+
+          {/* Sign Up Button */}
+          <button
+            onClick={registerModal.onOpen}
+            className="text-white hover:text-green-300 transition-colors p-2 flex items-center space-x-2"
+            title="Sign Up"
+          >
+            <GrUserNew size={20} />
+        
+          </button>
+        </div>
+      )}
     </div>
   );
 };

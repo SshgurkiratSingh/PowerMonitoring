@@ -1,62 +1,59 @@
 "use client";
-import React, { use } from "react";
-import { User } from "@prisma/client";
-import Container from "../container";
-import Lgog from "./Logo";
-import UserMenu from "./UserMEnu";
+import React from "react";
 import { SafeUser } from "@/app/types";
-import { useRouter } from "next/navigation";
-import Collapse from "../Collapse";
-import { BiBox, BiNotification } from "react-icons/bi";
+import UserMenu from "./UserMEnu";
 import { IoAlert } from "react-icons/io5";
-import useNotificationModal from "@/app/hooks/useNotificationModal";
+import { AiFillHome } from "react-icons/ai"; // Home icon
+import { useRouter } from "next/navigation";
+
 interface NavBarProps {
   currentUser?: SafeUser | null;
   totalAlerts?: number;
 }
-const Navbar: React.FC<NavBarProps> = ({ currentUser, totalAlerts }) => {
-  const router = useRouter();
-  const notifcationModal = useNotificationModal();
-  const handleClick = () => {
-    notifcationModal.onOpen();
-  };
-  return (
-    <>
-      <Container>
-        <div className="navbar bg-base-100 w-full">
-          {" "}
-          <div className="flex-1">
-            <div className="btn btn-ghost normal-case ">
-              <Lgog />
-            </div>
-          </div>
-          <div className="flex flex-1 justify-between items-center m-2">
-            <div className="flex-grow"></div>
-            {/* Navigation Links */}
-            <div className="flex items-center space-x-4 lg:space-x-6">
-              <button
-                onClick={() => router.push('/devices')}
-                className="text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Devices
-              </button>
-              <button
-                onClick={() => router.push('/alerts')}
-                className="text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                All Alerts
-              </button>
-            </div>
-            <div className="flex-grow"></div>
-            <div>
-           
-            </div>
-            <UserMenu currentUser={currentUser} />
-          </div>
-        </div>
-      </Container>
 
-    </>
+const Navbar: React.FC<NavBarProps> = ({ currentUser }) => {
+  const router = useRouter();
+
+  return (
+    <div className="fixed top-0 left-0 h-screen w-35 bg-neutral-800 text-white flex flex-col justify-between shadow-lg z-50">
+      {/* Top Section: Logo and Navigation Links */}
+      <div className="p-4">
+        <nav className="flex flex-col space-y-4">
+          {/* Home Button */}
+          <button
+            onClick={() => router.push("/")}
+            className="text-white hover:text-green-300 transition-colors p-2 flex items-center space-x-2"
+            title="Home"
+          >
+            <AiFillHome size={22} />
+
+          </button>
+
+          {/* Devices */}
+          <button
+            onClick={() => router.push("/devices")}
+            className="text-white hover:text-green-300 transition-colors p-2 text-left"
+          >
+            Devices
+          </button>
+
+          {/* Alerts */}
+          <button
+            onClick={() => router.push("/alerts")}
+            className="text-white hover:text-green-300 transition-colors p-2 flex items-center space-x-2"
+            title="All Alerts"
+          >
+            <IoAlert size={22} />
+           
+          </button>
+        </nav>
+      </div>
+
+      {/* Bottom Section: User Menu */}
+      <div className="p-4">
+        <UserMenu currentUser={currentUser} />
+      </div>
+    </div>
   );
 };
 
