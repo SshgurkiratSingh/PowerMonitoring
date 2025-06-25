@@ -8,12 +8,12 @@ import RegisterModal from "./components/modals/RegisterModal";
 import ToasterProvider from "./providers/ToasterProvider";
 import LoginModal from "./components/modals/LoginModal";
 import getCurrentUser from "./actions/getCurrentUser";
-import AddModal from "./components/modals/AddSubjectModal";
+// import AddModal from "./components/modals/AddSubjectModal"; // Removed unused import
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "DrinkDes",
-  description: "Vending MAchine Portal",
+  title: "CCMS Portal",
+  description: "Centralized Control and Monitoring System for Smart Lighting",
 };
 const font = Nunito({ subsets: ["latin"] });
 
