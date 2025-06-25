@@ -46,6 +46,15 @@ const Navbar: React.FC<NavBarProps> = ({ currentUser, totalAlerts }) => {
               >
                 All Alerts
               </button>
+              {/* Temporary link for Sample Data Page - Consider removing or restricting for production */}
+              {process.env.NODE_ENV === 'development' && ( // Only show in development
+                <button
+                  onClick={() => router.push('/sample-data')}
+                  className="text-xs font-medium text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors border border-yellow-500 dark:border-yellow-500 px-2 py-1 rounded-md"
+                >
+                  Sample Data
+                </button>
+              )}
             </div>
             <div className="flex-grow"></div>
             <div>
