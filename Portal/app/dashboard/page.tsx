@@ -61,8 +61,34 @@ export default async function DashboardPage() {
     totalLights: deviceLocations.length, // Example: count of devices as total lights
     lightsOn: deviceLocations.filter(d => d.status === 'ONLINE').length, // Example
     lightsOff: deviceLocations.filter(d => d.status === 'OFFLINE' || d.status === 'FAULT').length, // Example
-    alertsActive: deviceLocations.filter(d => d.alert).length, // Example
+    alertsActive: deviceLocations.filter(d => d.alert != null && d.alert !== "").length,
   };
+
+  // Fetch recent critical alerts for the dashboard
+  let recentCriticalAlerts: any[] = [];
+  try {
+    // Note: In a server component, direct Prisma access is fine.
+    // If this were client-side, we'd use fetch to /api/alerts.
+    recentCriticalAlerts = await prisma.alert.findMany({
+      where: {
+        level: 'CRITICAL',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 5,
+      include: {
+        device: {
+          select: {
+            deviceId: true, // User-friendly ID
+            id: true,       // Database ID for linking
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Failed to fetch recent critical alerts for dashboard:", error);
+  }
 
 
   return (
@@ -100,10 +126,33 @@ export default async function DashboardPage() {
               </ul>
             </div>
 
-            {/* Placeholder for Recent Activity/Alerts Preview */}
+            {/* Recent Critical Alerts */}
             <div className="p-6 shadow-lg rounded-lg bg-white dark:bg-neutral-800 md:col-span-3">
-              <h3 className="text-xl font-semibold mb-2">Recent Activity / Critical Alerts</h3>
-              <p className="text-gray-600 dark:text-gray-300">Recent system events and critical alerts will appear here.</p>
+              <h3 className="text-xl font-semibold mb-3">Recent Critical Alerts</h3>
+              {recentCriticalAlerts.length > 0 ? (
+                <ul className="space-y-2">
+                  {recentCriticalAlerts.map((alert: any) => (
+                    <li key={alert.id} className="p-3 bg-red-50 dark:bg-red-900/30 rounded-md border border-red-200 dark:border-red-700/50">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-red-700 dark:text-red-300">
+                          Device: <a href={`/devices/${alert.device.id}`} className="hover:underline">{alert.device.deviceId}</a>
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(alert.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-200 mt-1 truncate" title={alert.message}>
+                        {alert.message}
+                      </p>
+                    </li>
+                  ))}
+                   <li>
+                    <a href="/alerts?level=CRITICAL" className="text-sm text-blue-500 hover:underline mt-2 inline-block">View all critical alerts...</a>
+                    </li>
+                </ul>
+              ) : (
+                <p className="text-gray-600 dark:text-gray-300">No critical alerts in the recent history.</p>
+              )}
             </div>
           </div>
         </div>

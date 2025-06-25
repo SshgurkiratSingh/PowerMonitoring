@@ -32,7 +32,21 @@ const Navbar: React.FC<NavBarProps> = ({ currentUser, totalAlerts }) => {
           </div>
           <div className="flex flex-1 justify-between items-center m-2">
             <div className="flex-grow"></div>
-
+            {/* Navigation Links */}
+            <div className="flex items-center space-x-4 lg:space-x-6">
+              <button
+                onClick={() => router.push('/devices')}
+                className="text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Devices
+              </button>
+              <button
+                onClick={() => router.push('/alerts')}
+                className="text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                All Alerts
+              </button>
+            </div>
             <div className="flex-grow"></div>
             <div>
            

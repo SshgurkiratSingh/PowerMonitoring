@@ -7,6 +7,11 @@ import Container from "@/app/components/container";
 import Heading from "@/app/components/Heading";
 import ClientOnly from "@/app/components/ClientOnly";
 import EmptyState from "@/app/components/EmptyState";
+import TelemetryCharts from "@/app/components/devices/TelemetryCharts";
+import ScheduleManager from "@/app/components/devices/ScheduleManager";
+import ManualControls from "@/app/components/devices/ManualControls";
+import AlertHistory from "@/app/components/devices/AlertHistory"; // Import AlertHistory
+import toast from 'react-hot-toast';
 import {
   CCMSDevice as PrismaCCMSDevice,
   TelemetryData,
@@ -33,33 +38,24 @@ const DeviceDetailPage = () => {
   const deviceDbId = params?.deviceId as string; // This is the database ID from the URL
 
   const [device, setDevice] = useState<DetailedDevice | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true); // Renamed to avoid conflict
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchDeviceData = () => {
     if (!deviceDbId) {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
       setError("Device ID not found in URL.");
       return;
     }
-
-    setIsLoading(true);
+    setIsLoadingInitial(true);
     axios.get(`/api/devices/${deviceDbId}`)
       .then((response) => {
-        // The API for single device returns the device object directly
-        // Dates from Prisma are Date objects, need to handle formatting or ensure API stringifies them.
-        // For now, assuming they come as strings or will be formatted.
-        const fetchedDevice = response.data as any; // Cast to any for now
-
-        // Convert date fields if they are not already strings
+        const fetchedDevice = response.data as any;
         fetchedDevice.createdAt = new Date(fetchedDevice.createdAt).toLocaleString();
         fetchedDevice.updatedAt = new Date(fetchedDevice.updatedAt).toLocaleString();
-
-        // Ensure nested arrays are present, even if empty
         fetchedDevice.telemetry = fetchedDevice.telemetry || [];
         fetchedDevice.schedules = fetchedDevice.schedules || [];
         fetchedDevice.alerts = fetchedDevice.alerts || [];
-
         setDevice(fetchedDevice);
         setError(null);
       })
@@ -71,11 +67,25 @@ const DeviceDetailPage = () => {
         setDevice(null);
       })
       .finally(() => {
-        setIsLoading(false);
+        setIsLoadingInitial(false);
       });
-  }, [deviceDbId]);
+  };
 
-  if (isLoading) {
+  useEffect(() => {
+    fetchDeviceData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceDbId]); // Only re-run if deviceDbId changes
+
+  const handleScheduleUpdate = () => {
+    // This will re-fetch the device data, including updated schedules
+    // Alternatively, can use router.refresh() if server components are set up for that,
+    // but for client components managing their own state, direct re-fetch is often clearer.
+    toast.success("Refreshing schedules...");
+    fetchDeviceData();
+  };
+
+
+  if (isLoadingInitial) {
     return (
       <ClientOnly>
         <Container>
@@ -179,31 +189,45 @@ const DeviceDetailPage = () => {
 
           {/* Placeholder sections for Telemetry, Schedules, Alerts History - to be filled in next steps */}
           <div className="mt-10">
-            <h2 className="text-2xl font-semibold mb-4">Telemetry Data</h2>
-            <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">(Telemetry charts will be displayed here - Step 6)</p>
-            </div>
+            <h2 className="text-2xl font-semibold mb-4 text-neutral-800 dark:text-neutral-100">Telemetry Data</h2>
+            {device.telemetry && device.telemetry.length > 0 ? (
+              <TelemetryCharts telemetry={device.telemetry} />
+            ) : (
+              <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
+                <p className="text-gray-500 dark:text-gray-400">No telemetry data recorded for this device.</p>
+              </div>
+            )}
           </div>
 
           <div className="mt-10">
             <h2 className="text-2xl font-semibold mb-4">Manage Schedules</h2>
-            <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">(Schedule management interface will be here - Step 8)</p>
-            </div>
+            {device.schedules ? (
+                <ScheduleManager
+                    deviceId={device.id}
+                    schedules={device.schedules}
+                    onScheduleUpdate={handleScheduleUpdate}
+                />
+            ) : (
+              <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
+                <p className="text-gray-500 dark:text-gray-400">Loading schedules or no schedules available...</p>
+              </div>
+            )}
           </div>
 
           <div className="mt-10">
-            <h2 className="text-2xl font-semibold mb-4">Manual Controls</h2>
-            <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">(Manual device controls will be here - Step 9)</p>
-            </div>
+            <h2 className="text-2xl font-semibold mb-4 text-neutral-800 dark:text-neutral-100">Manual Controls</h2>
+            <ManualControls deviceId={device.id} deviceUniqueId={device.deviceId} />
           </div>
 
           <div className="mt-10">
-            <h2 className="text-2xl font-semibold mb-4">Alert History</h2>
-            <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">(Historical alerts list will be displayed here - Step 10)</p>
-            </div>
+            <h2 className="text-2xl font-semibold mb-4 text-neutral-800 dark:text-neutral-100">Alert History</h2>
+            {device.alerts ? (
+              <AlertHistory alerts={device.alerts} />
+            ) : (
+              <div className="p-6 bg-white dark:bg-neutral-800 shadow-lg rounded-lg min-h-[100px] flex items-center justify-center">
+                <p className="text-gray-500 dark:text-gray-400">Loading alert history or no alerts available...</p>
+              </div>
+            )}
           </div>
 
         </div>
