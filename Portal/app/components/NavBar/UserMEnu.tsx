@@ -7,14 +7,13 @@ import useRegisterModal from "@/app/hooks/useRegisterModal";
 import Avatar from "../Avatar";
 import { TiUser } from "react-icons/ti";
 import { AiOutlineLogout } from "react-icons/ai";
-// import { MdOutlineFavoriteBorder, MdHistory } from "react-icons/md"; // Removed unused
-// import { IoIosLogIn } from "react-icons/io"; // Removed unused
+import { MdOutlineFavoriteBorder, MdHistory } from "react-icons/md";
+import { IoIosLogIn } from "react-icons/io";
 import { GrUserNew } from "react-icons/gr";
 import { PiSignInLight } from "react-icons/pi";
-// import { IoFitnessSharp } from "react-icons/io5"; // Removed unused
-// import { BsPlus } from "react-icons/bs"; // Removed unused
-// import { PiMoneyBold } from "react-icons/pi"; // Removed unused
-// import useAddModal from "@/app/hooks/useAddModal"; // Removed
+import { IoFitnessSharp } from "react-icons/io5";
+import { BsPlus } from "react-icons/bs";
+import { PiMoneyBold } from "react-icons/pi";
 import { useRouter } from "next/navigation";
 import { BiHome } from "react-icons/bi";
 interface UserMenuProps {
@@ -26,11 +25,8 @@ const UserMenu: React.FC<UserMenuProps> = ({ currentUser }) => {
   const registerModal = useRegisterModal();
   const loginModal = useLoginModal();
   const router = useRouter();
-  // const addModal = useAddModal(); // Removed
   const toggleOpen = () => setIsOpen(!isOpen);
-  // Role is defined in prisma schema as enum UserRole { USER ADMIN MAINTENANCE }
-  // Assuming SafeUser includes the role property
-  if (currentUser?.role === "ADMIN") {
+  if (currentUser?.email === "guri2022@hotmail.com") {
     return (
       <div className="dropdown dropdown-end">
         <button
@@ -45,31 +41,36 @@ const UserMenu: React.FC<UserMenuProps> = ({ currentUser }) => {
           </div>
         </button>
         {isOpen && (
-          <ul
-            tabIndex={0}
-            className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
-          >
-            <li className="text-center text-primary text-xl">
-              Admin Menu
-            </li>
-            <MenuItem
-              label="Dashboard"
-              onClick={() => router.push('/dashboard')}
-              icon={<BiHome />} // Re-using BiHome, consider a dashboard specific icon
-            />
-            {/* Add Admin specific links here in the future e.g.
-            <MenuItem
-              label="User Management"
-              onClick={() => router.push('/admin/users')}
-              icon={<TiUser />} // Example icon
-            />
-            */}
-            <MenuItem
-              label="Logout"
-              onClick={() => signOut()} // Standardized logout
-              icon={<AiOutlineLogout />}
-            />
-          </ul>
+          <>
+            {currentUser.email === "guri2022@hotmail.com" ? (
+              <ul
+                tabIndex={0}
+                className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
+              >
+                <li className="text-center text-primary text-xl">
+                  Welcome To Admin Portal
+                </li>
+                <MenuItem
+                  label="Add New"
+                  onClick={() => {}}
+                  icon={<BsPlus />}
+                />
+                <MenuItem
+                  label="Logout"
+                  onClick={() => {
+                    signOut({
+                      redirect: false,
+                      callbackUrl:
+                        '"https://main.d1emtjc4kvp6hm.amplifyapp.com/"',
+                    });
+                  }}
+                  icon={<AiOutlineLogout />}
+                />
+              </ul>
+            ) : (
+              <div>You need to be admin to see this</div>
+            )}
+          </>
         )}
       </div>
     );
@@ -101,9 +102,9 @@ const UserMenu: React.FC<UserMenuProps> = ({ currentUser }) => {
                   Hi,{currentUser.name}
                 </li>
                 <MenuItem
-                  label="Dashboard"
-                  onClick={() => router.push("/dashboard")}
-                  icon={<BiHome />} // Re-using BiHome, consider a dashboard specific icon
+                  label="Home"
+                  onClick={() => router.push("/")}
+                  icon={<BiHome />}
                 />
                 <MenuItem
                   label="Profile "
