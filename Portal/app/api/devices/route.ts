@@ -81,14 +81,14 @@ export async function GET(request: Request) {
       orderBy: {
         createdAt: 'desc',
       },
-      // Optionally, include related data like schedules or latest telemetry
-      // include: {
-      //   schedules: true,
-      //   telemetry: {
-      //     orderBy: { timestamp: 'desc' },
-      //     take: 1
-      //   }
-      // }
+      include: {
+        // schedules: true, // Not strictly needed for the main device list overview, can add if required by UI later
+        telemetry: { // Get the latest telemetry entry for each device
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+        },
+        // The 'alert' field (latest alert string) is directly on CCMSDevice, so it's fetched by default.
+      },
     });
     return NextResponse.json(devices);
   } catch (error) {

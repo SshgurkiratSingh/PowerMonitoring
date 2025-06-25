@@ -27,12 +27,11 @@ export async function GET(
       where: {
         id: cCMSDeviceDBId,
       },
-      // Optionally include related data
-      // include: {
-      //   schedules: true,
-      //   telemetry: { orderBy: { timestamp: 'desc' } },
-      //   alerts: { orderBy: { createdAt: 'desc' } },
-      // },
+      include: {
+        schedules: { orderBy: { startTime: 'asc' } }, // Order schedules by start time
+        telemetry: { orderBy: { timestamp: 'desc' } }, // Get all telemetry, newest first
+        alerts: { orderBy: { createdAt: 'desc' } },    // Get all alerts, newest first
+      },
     });
 
     if (!device) {

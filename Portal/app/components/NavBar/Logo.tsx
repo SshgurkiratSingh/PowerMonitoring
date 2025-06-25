@@ -12,7 +12,7 @@ const Lgog = () => {
     <>
       <ClientOnly>
         <p onClick={handleClick} className="titBlock text-4xl">
-          CurriculumSync
+          CCMS Portal
         </p>
       </ClientOnly>
     </>
