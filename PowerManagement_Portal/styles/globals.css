@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-200; /* Default dark background and light text */
+    /* Consider adding a default font here if not handled by layout.tsx and tailwind.config.js */
+    /* e.g., @apply font-sans; */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-slate-100; /* Slightly brighter text for headings */
+  }
+
+  /* Modern Typography: Define a base font stack if not already configured elsewhere */
+  /* This is often better handled in layout.tsx or via Tailwind's font family config,
+     but as a fallback or for global overrides, it can be placed here.
+     Ensure your font files are correctly linked if using custom fonts.
+  */
+  html {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    scroll-behavior: smooth; /* Optional: for smooth scrolling */
+  }
+
+  /* Glassmorphism helper for backgrounds - can be applied with other bg colors/gradients */
+  .glass-effect {
+    @apply backdrop-blur-lg bg-opacity-60; /* Adjust opacity as needed */
+  }
+
+  /* Example of a vibrant gradient text class - can be customized */
+  .text-gradient-sky-blue {
+    @apply bg-gradient-to-r from-sky-400 to-blue-600 bg-clip-text text-transparent;
+  }
+  .text-gradient-teal-cyan {
+    @apply bg-gradient-to-r from-teal-400 to-cyan-600 bg-clip-text text-transparent;
+  }
+}
