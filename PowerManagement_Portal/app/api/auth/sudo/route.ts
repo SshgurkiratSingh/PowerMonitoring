@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       );
 
       // Set the cookie
-      cookies().set("sudo_token", token, {
+      (await cookies()).set("sudo_token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
