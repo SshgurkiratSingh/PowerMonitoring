@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// schema.prisma
+
+model CCMSDevice {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId        String          @unique
+  powerRating     String
+  voltage         String
+  frequency       String
+  incomingCurrent String
+  ipRating        String
+  status          DeviceStatus    @default(ONLINE)
+  location        Location
+  telemetry       TelemetryData[]
+  schedules       Schedule[]
+  alert           String // Latest alert message
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  Alert           Alert[]
+}
+
+type Location {
+  coordinates Float[] // [longitude, latitude]
+  address     String
+}
+
+type TelemetryData {
+  timestamp   DateTime
+  voltage     Float[] // [V1, V2, V3]
+  current     Float[] // [I1, I2, I3]
+  power       Float[] // [P1, P2, P3]
+  powerFactor Float[] // [PF1, PF2, PF3]
+  temperature Float
+}
+
+
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  FAULT
+}
+
+model Schedule {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  device    CCMSDevice   @relation(fields: [deviceId], references: [id])
+  deviceId  String       @db.ObjectId
+  startTime DateTime
+  endTime   DateTime
+  mode      ScheduleMode @default(AUTO)
+}
+
+enum ScheduleMode {
+  AUTO
+  MANUAL
+  TWILIGHT
+}
+
+// Optional: Alert history (if you want to keep past alerts)
+model Alert {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  device    CCMSDevice @relation(fields: [deviceId], references: [id])
+  deviceId  String     @db.ObjectId
+  message   String
+  level     AlertLevel
+  createdAt DateTime   @default(now())
+}
+
+enum AlertLevel {
+  INFO
+  WARNING
+  CRITICAL
+}
