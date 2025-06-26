@@ -57,11 +57,11 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({
           class: clsx(
             [
               "w-auto h-auto",
-              "bg-transparent",
+              "bg-transparent", // Keeps the switch background transparent
               "rounded-lg",
               "flex items-center justify-center",
               "group-data-[selected=true]:bg-transparent",
-              "!text-default-500",
+              "text-slate-400 hover:text-sky-400 transition-colors", // Applied consistent icon coloring
               "pt-px",
               "px-0",
               "mx-0",
@@ -70,6 +70,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({
           ),
         })}
       >
+        {/* The icons will inherit the color from the parent div's text color */}
         {!isSelected || isSSR ? (
           <SunFilledIcon size={22} />
         ) : (
