@@ -1,3 +1,4 @@
+"use client";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -13,17 +14,40 @@ import { Link } from "@heroui/link";
 import { Input } from "@heroui/input";
 import { link as linkStyles } from "@heroui/theme";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { useEffect, useState } from "react";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import {
-  GithubIcon,
-  SearchIcon,
-  AppLogoIcon, // Changed from Logo
-} from "@/components/icons";
+import { SearchIcon, AppLogoIcon } from "@/components/icons";
 
 export const Navbar = () => {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check for authentication cookie
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/check");
+        setIsAuthenticated(response.ok);
+      } catch (err) {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   const searchInput = (
     <Input
       aria-label="Search"
@@ -37,7 +61,7 @@ export const Navbar = () => {
         </Kbd>
       }
       labelPlacement="outside"
-      placeholder="Search..."
+      placeholder="Search devices..."
       startContent={
         <SearchIcon className="text-base text-default-400 pointer-events-none flex-shrink-0" />
       }
@@ -54,74 +78,82 @@ export const Navbar = () => {
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <NavbarBrand as="li" className="gap-3 max-w-fit">
           <NextLink className="flex justify-start items-center gap-1" href="/">
-            <AppLogoIcon /> {/* Changed from Logo */}
+            <AppLogoIcon />
             <p className="font-bold text-inherit text-white">CCMS</p>
           </NextLink>
         </NavbarBrand>
-        <ul className="hidden lg:flex gap-4 justify-start ml-2">
-          {siteConfig.navItems.map((item) => (
-            <NavbarItem key={item.href}>
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium text-slate-200 hover:text-sky-400 transition-colors",
-                )}
-                color="foreground"
-                href={item.href}
-              >
-                {item.label}
-              </NextLink>
-            </NavbarItem>
-          ))}
-        </ul>
+        {isAuthenticated && (
+          <ul className="hidden lg:flex gap-4 justify-start ml-2">
+            {siteConfig.navItems.map((item) => (
+              <NavbarItem key={item.href}>
+                <NextLink
+                  className={clsx(
+                    linkStyles({ color: "foreground" }),
+                    "data-[active=true]:text-primary data-[active=true]:font-medium text-slate-200 hover:text-sky-400 transition-colors"
+                  )}
+                  color="foreground"
+                  href={item.href}
+                >
+                  {item.label}
+                </NextLink>
+              </NavbarItem>
+            ))}
+          </ul>
+        )}
       </NavbarContent>
 
       <NavbarContent
         className="hidden sm:flex basis-1/5 sm:basis-full"
         justify="end"
       >
-        <NavbarItem className="hidden sm:flex gap-2">
-          {/* Removed Twitter and Discord links */}
-          <Link isExternal aria-label="Github" href={siteConfig.links.github}>
-            <GithubIcon className="text-slate-400 hover:text-sky-400 transition-colors" />
-          </Link>
+        {isAuthenticated && (
+          <>
+            <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
+            <NavbarItem>
+              <Button
+                color="danger"
+                variant="ghost"
+                onClick={handleLogout}
+                className="text-slate-200 hover:text-red-400"
+              >
+                Logout
+              </Button>
+            </NavbarItem>
+          </>
+        )}
+        <NavbarItem>
           <ThemeSwitch />
         </NavbarItem>
-        <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-        {/* Removed Sponsor button */}
       </NavbarContent>
 
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
-        <Link isExternal aria-label="Github" href={siteConfig.links.github}>
-          <GithubIcon className="text-slate-400 hover:text-sky-400 transition-colors" />
-        </Link>
         <ThemeSwitch />
-        <NavbarMenuToggle className="text-slate-200" />
+        {isAuthenticated && <NavbarMenuToggle className="text-slate-200" />}
       </NavbarContent>
 
-      <NavbarMenu className="bg-slate-900/70 backdrop-blur-md border-b border-slate-900/50">
-        {searchInput}
-        <div className="mx-4 mt-2 flex flex-col gap-2">
-          {siteConfig.navMenuItems.map((item, index) => (
-            <NavbarMenuItem key={`${item}-${index}`}>
-              <Link
-                color={
-                  index === 2
-                    ? "primary"
-                    : index === siteConfig.navMenuItems.length - 1
+      {isAuthenticated && (
+        <NavbarMenu className="bg-slate-900/70 backdrop-blur-md border-b border-slate-900/50">
+          {searchInput}
+          <div className="mx-4 mt-2 flex flex-col gap-2">
+            {siteConfig.navMenuItems.map((item, index) => (
+              <NavbarMenuItem key={`${item}-${index}`}>
+                <Link
+                  color={
+                    index === siteConfig.navMenuItems.length - 1
                       ? "danger"
                       : "foreground"
-                }
-                href="#"
-                size="lg"
-                className="text-slate-200 hover:text-sky-400 transition-colors"
-              >
-                {item.label}
-              </Link>
-            </NavbarMenuItem>
-          ))}
-        </div>
-      </NavbarMenu>
+                  }
+                  href={item.href}
+                  size="lg"
+                  className="text-slate-200 hover:text-sky-400 transition-colors"
+                >
+                  {item.label}
+                </Link>
+              </NavbarMenuItem>
+            ))}
+          </div>
+        </NavbarMenu>
+      )}
     </HeroUINavbar>
   );
 };

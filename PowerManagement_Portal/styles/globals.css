@@ -30,9 +30,9 @@
 
   /* Example of a vibrant gradient text class - can be customized */
   .text-gradient-sky-blue {
-    @apply bg-gradient-to-r from-sky-400 to-blue-600 bg-clip-text text-transparent;
+    /* @apply bg-gradient-to-r from-sky-400 to-blue-600 bg-clip-text text-transparent; */
   }
   .text-gradient-teal-cyan {
-    @apply bg-gradient-to-r from-teal-400 to-cyan-600 bg-clip-text text-transparent;
+    /* @apply bg-gradient-to-r from-teal-400 to-cyan-600 bg-clip-text text-transparent; */
   }
 }
