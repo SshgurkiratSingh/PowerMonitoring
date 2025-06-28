@@ -9,7 +9,7 @@ import {
   MdCheckCircle,
   MdWarning,
 } from "react-icons/md";
-import type LType from "leaflet";
+import type { Map as LeafletMap, TileLayer, Marker } from "leaflet";
 
 interface DeviceLocation {
   id: string;
@@ -37,12 +37,12 @@ export default function MapComponent() {
   const [mapReady, setMapReady] = useState(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<LType.Map | null>(null);
-  const markersRef = useRef<LType.Marker[]>([]);
-  const tileLayerRef = useRef<LType.TileLayer | null>(null);
+  const mapInstance = useRef<LeafletMap | null>(null);
+  const tileLayerRef = useRef<TileLayer | null>(null);
+  const markersRef = useRef<Marker[]>([]);
   const L = useRef<typeof import("leaflet") | null>(null);
 
-  // Load Leaflet dynamically
+  // Dynamically load Leaflet
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -63,8 +63,8 @@ export default function MapComponent() {
         });
         setLeafletLoaded(true);
         console.log("✅ Leaflet loaded successfully");
-      } catch (err) {
-        console.error("❌ Failed to load Leaflet:", err);
+      } catch (e) {
+        console.error("❌ Failed to load Leaflet", e);
         if (mounted) setError("Failed to load map library");
       }
     })();
@@ -73,7 +73,7 @@ export default function MapComponent() {
     };
   }, []);
 
-  // Fetch device locations
+  // Fetch device locations from API
   const fetchDeviceLocations = async () => {
     try {
       const res = await fetch("/api/devices/locations");
@@ -81,25 +81,24 @@ export default function MapComponent() {
       const data: MapData = await res.json();
       setMapData(data);
       setError(null);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Initialize map once Leaflet is loaded
+  // Initialize the map once Leaflet is ready
   useLayoutEffect(() => {
     if (!leafletLoaded || !mapRef.current || !L.current || mapInstance.current)
       return;
-    let mounted = true;
 
+    let mounted = true;
     const initMap = () => {
-      console.log("🗺️ Initializing map...");
       const leaflet = L.current!;
       const map = leaflet.map(mapRef.current!, {
-        center: [30.7333, 76.7794],
+        center: [30.7333, 76.7794], // Chandigarh
         zoom: 10,
         zoomControl: true,
         scrollWheelZoom: true,
@@ -108,7 +107,7 @@ export default function MapComponent() {
       });
       mapInstance.current = map;
 
-      // Handle map-ready state via dataloading/dataload
+      // Handle loading overlay via Leaflet events
       map
         .on("dataloading", () => {
           console.log("🔄 Tiles loading...");
@@ -117,7 +116,6 @@ export default function MapComponent() {
         .on("dataload", () => {
           console.log("✅ Tiles all loaded");
           setMapReady(true);
-          // Force resize after load
           setTimeout(() => map.invalidateSize(true), 100);
         })
         .whenReady(() => {
@@ -126,19 +124,23 @@ export default function MapComponent() {
           setTimeout(() => map.invalidateSize(true), 100);
         });
 
-      // Create tile layer
+      // Primary tile layer (CartoDB Positron)
       tileLayerRef.current = leaflet
-        .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          maxZoom: 19,
-        })
+        .tileLayer(
+          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+          {
+            attribution:
+              '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 19,
+            subdomains: "abcd",
+          }
+        )
         .addTo(map);
 
       console.log("✅ Map initialization complete");
     };
 
-    // Delay to ensure container has size
+    // Delay to ensure container dimensions are correct
     const timer = setTimeout(initMap, 50);
     return () => {
       mounted = false;
@@ -152,13 +154,13 @@ export default function MapComponent() {
     };
   }, [leafletLoaded]);
 
-  // Add markers when data or readiness changes
+  // Add markers whenever data or map readiness changes
   useEffect(() => {
     const map = mapInstance.current;
     const leaflet = L.current;
     if (!map || !leaflet || !mapData?.devices || !mapReady) return;
 
-    // Remove existing markers
+    // Remove old markers
     markersRef.current.forEach((m) => map.removeLayer(m));
     markersRef.current = [];
 
@@ -186,37 +188,37 @@ export default function MapComponent() {
       markersRef.current.push(marker);
     });
 
-    // Fit to markers
+    // Fit bounds to markers
     if (markersRef.current.length) {
       const group = leaflet.featureGroup(markersRef.current);
       map.fitBounds(group.getBounds(), { padding: [20, 20], maxZoom: 15 });
     }
   }, [mapData, mapReady]);
 
-  // Fetch on mount and every minute
+  // Initial fetch and polling
   useEffect(() => {
     fetchDeviceLocations();
-    const interval = setInterval(fetchDeviceLocations, 60000);
-    return () => clearInterval(interval);
+    const id = setInterval(fetchDeviceLocations, 60000);
+    return () => clearInterval(id);
   }, []);
 
   // Handle window resize
   useEffect(() => {
-    const handleResize = () => {
+    const onResize = () => {
       if (mapInstance.current && mapReady) {
         setTimeout(() => mapInstance.current!.invalidateSize(true), 200);
       }
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [mapReady]);
 
-  // Render loading or error
+  // Render loading, error or map
   if (loading || !leafletLoaded) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-slate-800 rounded-lg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2" />
           <p className="text-white text-sm">
             {!leafletLoaded ? "Loading map library..." : "Loading map..."}
           </p>
@@ -248,7 +250,6 @@ export default function MapComponent() {
     );
   }
 
-  // Render map
   return (
     <div className="w-full h-full relative">
       <div
@@ -261,23 +262,22 @@ export default function MapComponent() {
           zIndex: 0,
         }}
       />
-      {/* Overlay while tiles are loading */}
       {!mapReady && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50 rounded-lg z-10">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-2"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-2" />
             <div className="text-white text-sm">Loading map tiles...</div>
           </div>
         </div>
       )}
 
-      {/* Top-right control */}
+      {/* Top-right devices count & refresh */}
       <div className="absolute top-2 right-2 z-[1000]">
         <Card className="bg-slate-900/90 backdrop-blur-sm border border-slate-700">
-          <CardBody className="p-3 flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-white text-sm">
+          <CardBody className="p-3 flex items-center justify-between text-white text-sm">
+            <div className="flex items-center space-x-2">
               <MdLocationOn />
-              <span>{mapData?.devices?.length ?? 0} devices</span>
+              <span>{mapData?.devices.length ?? 0} devices</span>
             </div>
             <Button size="sm" variant="light" onClick={fetchDeviceLocations}>
               <MdRefresh />
@@ -286,33 +286,31 @@ export default function MapComponent() {
         </Card>
       </div>
 
-      {/* Bottom-left status */}
-      {mapData?.devices && (
-        <div className="absolute bottom-2 left-2 z-[1000]">
-          <Card className="bg-slate-900/90 backdrop-blur-sm border border-slate-700">
-            <CardBody className="p-3 flex space-x-4 text-sm text-white">
-              <div className="flex items-center space-x-1">
-                <MdCheckCircle className="text-green-400" />
-                <span>
-                  {mapData.devices.filter((d) => d.status === "ONLINE").length}
-                </span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <MdWarning className="text-yellow-400" />
-                <span>
-                  {mapData.devices.filter((d) => d.status === "OFFLINE").length}
-                </span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <MdError className="text-red-400" />
-                <span>
-                  {mapData.devices.filter((d) => d.status === "FAULT").length}
-                </span>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-      )}
+      {/* Bottom-left status summary */}
+      <div className="absolute bottom-2 left-2 z-[1000]">
+        <Card className="bg-slate-900/90 backdrop-blur-sm border border-slate-700">
+          <CardBody className="p-3 flex space-x-4 text-sm text-white">
+            <div className="flex items-center space-x-1">
+              <MdCheckCircle className="text-green-400" />
+              <span>
+                {mapData.devices.filter((d) => d.status === "ONLINE").length}
+              </span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <MdWarning className="text-yellow-400" />
+              <span>
+                {mapData.devices.filter((d) => d.status === "OFFLINE").length}
+              </span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <MdError className="text-red-400" />
+              <span>
+                {mapData.devices.filter((d) => d.status === "FAULT").length}
+              </span>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }
