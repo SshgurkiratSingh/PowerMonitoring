@@ -1,47 +1,43 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
+import { z } from 'zod';
 
-const prisma = new PrismaClient();
+const createDeviceSchema = z.object({
+  deviceId: z.string(),
+  powerRating: z.string(),
+  voltage: z.string(),
+  frequency: z.string(),
+  incomingCurrent: z.string(),
+  ipRating: z.string(),
+  location: z.object({
+    coordinates: z.array(z.number()).length(2),
+    address: z.string()
+  })
+});
 
 export async function POST(request: Request) {
   try {
-    const sudoPassword = request.headers.get('X-Sudo-Password');
-    
-    if (sudoPassword !== process.env.SUDOPASSWORD) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Sudo access required' },
-        { status: 403 }
-      );
-    }
+    const json = await request.json();
+    const body = createDeviceSchema.parse(json);
 
-    const data = await request.json();
-
-    // Validate required fields
-    if (!data.deviceId || !data.powerRating || !data.voltage || !data.location) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Create the device
     const device = await prisma.cCMSDevice.create({
       data: {
-        deviceId: data.deviceId,
-        powerRating: data.powerRating,
-        voltage: data.voltage,
-        frequency: data.frequency,
-        incomingCurrent: data.incomingCurrent,
-        ipRating: data.ipRating,
-        location: data.location,
+        ...body,
         status: 'ONLINE',
-        alert: 'No active alerts',
-      },
+        alert: ''
+      }
     });
 
     return NextResponse.json(device);
   } catch (error) {
-    console.error('Error creating device:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.errors },
+        { status: 400 }
+      );
+    }
+
+    console.error('Failed to create device:', error);
     return NextResponse.json(
       { error: 'Failed to create device' },
       { status: 500 }

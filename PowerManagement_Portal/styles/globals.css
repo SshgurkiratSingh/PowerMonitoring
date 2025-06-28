@@ -12,6 +12,10 @@
   h1, h2, h3, h4, h5, h6 {
     @apply text-slate-100; /* Slightly brighter text for headings */
   }
+#map {
+  width: 100%;
+  height: 400px; /* Must have explicit height */
+}
 
   /* Modern Typography: Define a base font stack if not already configured elsewhere */
   /* This is often better handled in layout.tsx or via Tailwind's font family config,

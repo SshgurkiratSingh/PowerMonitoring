@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
@@ -13,8 +10,6 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
-
-// schema.prisma
 
 model CCMSDevice {
   id              String          @id @default(auto()) @map("_id") @db.ObjectId
@@ -28,10 +23,10 @@ model CCMSDevice {
   location        Location
   telemetry       TelemetryData[]
   schedules       Schedule[]
-  alert           String // Latest alert message
+  latestAlert     String // Renamed from 'alert'
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  Alert           Alert[]
+  alerts          Alert[] // Renamed from 'Alert' for consistency
 }
 
 type Location {
@@ -47,8 +42,6 @@ type TelemetryData {
   powerFactor Float[] // [PF1, PF2, PF3]
   temperature Float
 }
-
-
 
 enum DeviceStatus {
   ONLINE
@@ -71,7 +64,6 @@ enum ScheduleMode {
   TWILIGHT
 }
 
-// Optional: Alert history (if you want to keep past alerts)
 model Alert {
   id        String     @id @default(auto()) @map("_id") @db.ObjectId
   device    CCMSDevice @relation(fields: [deviceId], references: [id])

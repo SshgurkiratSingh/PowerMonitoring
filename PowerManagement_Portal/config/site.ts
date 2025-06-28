@@ -6,7 +6,7 @@ export const siteConfig = {
   navItems: [
     {
       label: "Dashboard",
-      href: "/",
+      href: "/dashboard",
     },
     {
       label: "Devices",
