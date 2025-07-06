@@ -69,6 +69,8 @@ export async function GET(request: Request) {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Make end date inclusive
+    
     const filteredTelemetry = (device.telemetry || []).filter((entry: any) => {
       const ts = new Date(entry.timestamp);
       return ts >= start && ts <= end;

@@ -13,8 +13,16 @@ export const siteConfig = {
       href: "/devices",
     },
     {
+      label: "Groups",
+      href: "/groups",
+    },
+    {
       label: "Map View",
       href: "/map",
+    },
+    {
+      label: "Telemetry",
+      href: "/telemetry",
     },
     {
       label: "Schedules",

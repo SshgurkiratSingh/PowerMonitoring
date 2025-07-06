@@ -304,10 +304,23 @@ export default function DeviceEditPage() {
         {/* Telemetry Data */}
         <Card className="bg-slate-900/70 backdrop-blur-md border border-slate-700">
           <CardHeader>
-            <h2 className="text-xl font-semibold text-white">Telemetry Data</h2>
-            <Chip color="primary" variant="flat" className="ml-auto">
-              {device.telemetry?.length || 0} readings
-            </Chip>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Telemetry Data</h2>
+              <div className="flex items-center gap-2">
+                <Chip color="primary" variant="flat">
+                  {device.telemetry?.length || 0} readings
+                </Chip>
+                <Button
+                  size="sm"
+                  color="secondary"
+                  variant="flat"
+                  as="a"
+                  href={`/telemetry?deviceId=${device.deviceId}`}
+                >
+                  View Full History
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardBody>
             {device.telemetry && device.telemetry.length > 0 ? (
