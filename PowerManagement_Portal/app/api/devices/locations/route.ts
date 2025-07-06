@@ -13,7 +13,6 @@ export async function GET() {
         status: true,
         location: true,
         powerRating: true,
-        latestAlert: true,
         telemetry: true, // Since it's an embedded type, just select all
         // Remove alerts for now if it's causing issues, we'll add it back
       }
@@ -66,7 +65,6 @@ export async function GET() {
         coordinates: device.location.coordinates, // [longitude, latitude]
         address: device.location.address,
         powerRating: device.powerRating,
-        latestAlert: device.latestAlert,
         currentPower: totalPower,
         temperature: latestTelemetry?.temperature || null,
         lastUpdate: latestTelemetry?.timestamp || null,

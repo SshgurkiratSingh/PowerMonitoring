@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@/app/generated/prisma';
-
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 export async function GET() {
   try {
@@ -17,7 +15,6 @@ export async function GET() {
         incomingCurrent: true,
         ipRating: true,
         telemetry: true,
-        latestAlert: true,
       }
     });
 
@@ -126,7 +123,6 @@ export async function POST(request: Request) {
         },
         status: 'OFFLINE',
         telemetry: [],
-        latestAlert: ''
       },
       select: {
         id: true,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/app/lib/prisma';
 import { z } from 'zod';
 
 const createDeviceSchema = z.object({
@@ -24,7 +24,6 @@ export async function POST(request: Request) {
       data: {
         ...body,
         status: 'ONLINE',
-        alert: ''
       }
     });
 

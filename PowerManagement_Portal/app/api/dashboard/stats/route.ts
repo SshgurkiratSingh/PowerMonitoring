@@ -1,94 +1,185 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@/app/generated/prisma';
+import { DashboardStats, FleetOverview, EnergyAnalytics } from '@/types';
 
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const [deviceStatsRaw, latestAlerts, devices] = await prisma.$transaction([
-      // Get device status counts
-      prisma.cCMSDevice.groupBy({
-        by: ['status'],
-        _count: {
-          _all: true,
-        },
-        orderBy: {
-          status: 'asc',
-        },
-      }),
-      // Get latest alerts (this will be empty based on your image)
-      prisma.alert.findMany({
-        take: 5,
-        orderBy: {
-          createdAt: 'desc',
-        },
-        select: {
-          id: true,
-          message: true,
-          level: true,
-          createdAt: true,
-          device: {
-            select: {
-              deviceId: true,
-            },
+    // Get all devices
+    const devices = await prisma.cCMSDevice.findMany({
+      include: {
+        deviceGroup: true,
+        alertThresholds: true,
+      },
+    });
+
+    // Get latest alerts
+    const latestAlerts = await prisma.alert.findMany({
+      take: 10,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      where: {
+        isAcknowledged: false,
+      },
+      select: {
+        id: true,
+        message: true,
+        level: true,
+        type: true,
+        value: true,
+        threshold: true,
+        createdAt: true,
+        device: {
+          select: {
+            deviceId: true,
           },
         },
-      }),
-      // Get all devices with their telemetry data
-      prisma.cCMSDevice.findMany({
-        select: {
-          deviceId: true,
-          telemetry: true,
-          latestAlert: true, // Include latestAlert for fallback
-          status: true,
-        },
-      }),
-    ]);
+      },
+    });
 
-    // Transform device stats to the expected structure
-    const deviceStats = deviceStatsRaw.map(stat => ({
-      status: stat.status,
-      _count: typeof stat._count === 'object' && stat._count !== null && '_all' in stat._count
-        ? (stat._count as { _all?: number })._all ?? 0
-        : 0,
-    }));
+    // Get device groups count
+    const deviceGroups = await prisma.deviceGroup.count();
 
-    // If no Alert records exist, create alerts from latestAlert field
-    let alertsToReturn = latestAlerts;
-    if (latestAlerts.length === 0) {
-      alertsToReturn = devices
-        .filter(device => device.latestAlert && device.latestAlert.trim() !== '')
-        .slice(0, 5)
-        .map((device, index) => ({
-          id: `fallback-${index}`,
-          message: device.latestAlert,
-          level: 'INFO', // Default level since we don't have it in latestAlert
-          createdAt: new Date(),
-          device: {
-            deviceId: device.deviceId,
-          },
-        }));
-    }
+    // Get active schedules count
+    const activeSchedules = await prisma.schedule.count({
+      where: {
+        isActive: true,
+      },
+    });
 
-    // Calculate total power consumption
-    const totalPower = devices.reduce((sum, device) => {
+    // Calculate device stats manually
+    const deviceStats = [
+      { status: 'ONLINE', _count: devices.filter(d => d.status === 'ONLINE').length },
+      { status: 'OFFLINE', _count: devices.filter(d => d.status === 'OFFLINE').length },
+      { status: 'FAULT', _count: devices.filter(d => d.status === 'FAULT').length },
+      { status: 'MAINTENANCE', _count: devices.filter(d => d.status === 'MAINTENANCE').length },
+    ];
+
+    // Get status counts
+    const onlineDevices = deviceStats.find(stat => stat.status === 'ONLINE')?._count || 0;
+    const offlineDevices = deviceStats.find(stat => stat.status === 'OFFLINE')?._count || 0;
+    const faultDevices = deviceStats.find(stat => stat.status === 'FAULT')?._count || 0;
+    const maintenanceDevices = deviceStats.find(stat => stat.status === 'MAINTENANCE')?._count || 0;
+
+    // Calculate total power consumption and energy from real telemetry data
+    let totalPower = 0;
+    let totalEnergyConsumption = 0;
+    let devicesWithTelemetry = 0;
+    
+    devices.forEach(device => {
       if (device.telemetry && device.telemetry.length > 0) {
-        const sortedTelemetry = device.telemetry.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        
-        const latestReading = sortedTelemetry[0];
-        
-        if (latestReading && Array.isArray(latestReading.power) && latestReading.power.length > 0) {
-          const validPowerValues = latestReading.power.filter(p => typeof p === 'number' && !isNaN(p));
-          return sum + validPowerValues.reduce((a, b) => a + b, 0);
-        }
+        const latestTelemetry = device.telemetry[device.telemetry.length - 1]; // Get the most recent telemetry
+        totalPower += latestTelemetry.totalPower || 0;
+        totalEnergyConsumption += latestTelemetry.totalEnergy || 0;
+        devicesWithTelemetry++;
       }
-      return sum;
-    }, 0);
+    });
+
+    // Calculate network health percentage
+    const totalDevices = devices.length;
+    const networkHealthPercentage = totalDevices > 0 ? (onlineDevices / totalDevices) * 100 : 0;
+
+    // Calculate critical alerts
+    const criticalAlerts = latestAlerts.filter(alert => 
+      alert.level === 'CRITICAL' || alert.level === 'EMERGENCY'
+    ).length;
+
+    // Create enhanced dashboard stats
+    const dashboardStats: DashboardStats = {
+      totalDevices,
+      onlineDevices,
+      offlineDevices,
+      faultDevices,
+      maintenanceDevices,
+      totalPower: Math.round(totalPower * 100) / 100,
+      totalEnergy: Math.round(totalEnergyConsumption * 100) / 100,
+      activeAlerts: latestAlerts.length,
+      criticalAlerts,
+      deviceGroups,
+      activeSchedules,
+      networkHealth: Math.round(networkHealthPercentage * 100) / 100,
+      timestamp: new Date(),
+    };
+
+    // Create fleet overview with real data
+    const fleetOverview: FleetOverview = {
+      totalPanels: totalDevices,
+      totalFeeders: Math.ceil(totalDevices / 10), // Estimate feeders based on devices
+      totalLights: totalDevices * 4, // Estimate 4 lights per panel
+      onlinePercentage: totalDevices > 0 ? (onlineDevices / totalDevices) * 100 : 0,
+      networkHealth: networkHealthPercentage,
+      powerConsumption: totalPower,
+      energySavings: totalEnergyConsumption * 0.15, // Estimate 15% energy savings based on real consumption
+      lastUpdate: new Date(),
+    };
+
+    // Create energy analytics from real telemetry data
+    const energyAnalytics: EnergyAnalytics = {
+      currentPower: totalPower,
+      totalEnergy: totalEnergyConsumption,
+      voltage: devicesWithTelemetry > 0 ? devices.reduce((acc, device) => {
+        if (device.telemetry && device.telemetry.length > 0) {
+          const latestTelemetry = device.telemetry[device.telemetry.length - 1];
+          return [
+            acc[0] + (latestTelemetry.voltage?.[0] || 0),
+            acc[1] + (latestTelemetry.voltage?.[1] || 0),
+            acc[2] + (latestTelemetry.voltage?.[2] || 0)
+          ];
+        }
+        return acc;
+      }, [0, 0, 0]).map(sum => sum / devicesWithTelemetry) : [0, 0, 0],
+      current: devicesWithTelemetry > 0 ? devices.reduce((acc, device) => {
+        if (device.telemetry && device.telemetry.length > 0) {
+          const latestTelemetry = device.telemetry[device.telemetry.length - 1];
+          return [
+            acc[0] + (latestTelemetry.current?.[0] || 0),
+            acc[1] + (latestTelemetry.current?.[1] || 0),
+            acc[2] + (latestTelemetry.current?.[2] || 0)
+          ];
+        }
+        return acc;
+      }, [0, 0, 0]).map(sum => sum / devicesWithTelemetry) : [0, 0, 0],
+      powerFactor: devicesWithTelemetry > 0 ? devices.reduce((acc, device) => {
+        if (device.telemetry && device.telemetry.length > 0) {
+          const latestTelemetry = device.telemetry[device.telemetry.length - 1];
+          return [
+            acc[0] + (latestTelemetry.powerFactor?.[0] || 0),
+            acc[1] + (latestTelemetry.powerFactor?.[1] || 0),
+            acc[2] + (latestTelemetry.powerFactor?.[2] || 0)
+          ];
+        }
+        return acc;
+      }, [0, 0, 0]).map(sum => sum / devicesWithTelemetry) : [0, 0, 0],
+      temperature: devicesWithTelemetry > 0 ? devices.reduce((acc, device) => {
+        if (device.telemetry && device.telemetry.length > 0) {
+          return acc + (device.telemetry[device.telemetry.length - 1].temperature || 0);
+        }
+        return acc;
+      }, 0) / devicesWithTelemetry : 0,
+      frequency: devicesWithTelemetry > 0 ? devices.reduce((acc, device) => {
+        if (device.telemetry && device.telemetry.length > 0) {
+          return acc + (device.telemetry[device.telemetry.length - 1].frequency || 0);
+        }
+        return acc;
+      }, 0) / devicesWithTelemetry : 0,
+      phaseStatus: devicesWithTelemetry > 0 ? devices.reduce((acc: boolean[], device) => {
+        if (device.telemetry && device.telemetry.length > 0) {
+          const latestTelemetry = device.telemetry[device.telemetry.length - 1];
+          return [
+            acc[0] && (latestTelemetry.phaseStatus?.[0] ?? false),
+            acc[1] && (latestTelemetry.phaseStatus?.[1] ?? false),
+            acc[2] && (latestTelemetry.phaseStatus?.[2] ?? false)
+          ];
+        }
+        return acc;
+      }, [true, true, true]) : [false, false, false],
+      timestamp: new Date(),
+    };
 
     // Ensure all status types are represented
-    const allStatuses = ['ONLINE', 'OFFLINE', 'FAULT'];
+    const allStatuses = ['ONLINE', 'OFFLINE', 'FAULT', 'MAINTENANCE'];
     const completeDeviceStats = allStatuses.map(status => {
       const existing = deviceStats.find(stat => stat.status === status);
       return existing || { status, _count: 0 };
@@ -96,9 +187,12 @@ export async function GET() {
 
     const response = {
       deviceStats: completeDeviceStats,
-      latestAlerts: alertsToReturn,
-      totalPower: Math.round(totalPower * 100) / 100, // Round to 2 decimal places
+      latestAlerts,
+      totalPower: Math.round(totalPower * 100) / 100,
       timestamp: new Date().toISOString(),
+      dashboardStats,
+      fleetOverview,
+      energyAnalytics,
     };
 
     return NextResponse.json(response);
@@ -112,10 +206,47 @@ export async function GET() {
           { status: 'ONLINE', _count: 0 },
           { status: 'OFFLINE', _count: 0 },
           { status: 'FAULT', _count: 0 },
+          { status: 'MAINTENANCE', _count: 0 },
         ],
         latestAlerts: [],
         totalPower: 0,
         timestamp: new Date().toISOString(),
+        dashboardStats: {
+          totalDevices: 0,
+          onlineDevices: 0,
+          offlineDevices: 0,
+          faultDevices: 0,
+          maintenanceDevices: 0,
+          totalPower: 0,
+          totalEnergy: 0,
+          activeAlerts: 0,
+          criticalAlerts: 0,
+          deviceGroups: 0,
+          activeSchedules: 0,
+          networkHealth: 0,
+          timestamp: new Date(),
+        },
+        fleetOverview: {
+          totalPanels: 0,
+          totalFeeders: 0,
+          totalLights: 0,
+          onlinePercentage: 0,
+          networkHealth: 0,
+          powerConsumption: 0,
+          energySavings: 0,
+          lastUpdate: new Date(),
+        },
+        energyAnalytics: {
+          currentPower: 0,
+          totalEnergy: 0,
+          voltage: [0, 0, 0],
+          current: [0, 0, 0],
+          powerFactor: [0, 0, 0],
+          temperature: 0,
+          frequency: 0,
+          phaseStatus: [false, false, false],
+          timestamp: new Date(),
+        },
         error: 'Failed to fetch dashboard stats'
       },
       { status: 500 }

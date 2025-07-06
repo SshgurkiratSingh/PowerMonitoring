@@ -46,3 +46,37 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const deviceId = searchParams.get('deviceId');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    if (!deviceId || !startDate || !endDate) {
+      return NextResponse.json({ error: 'Missing required query parameters' }, { status: 400 });
+    }
+
+    const device = await prisma.cCMSDevice.findUnique({
+      where: { deviceId },
+      select: { telemetry: true }
+    });
+
+    if (!device) {
+      return NextResponse.json({ error: 'Device not found' }, { status: 404 });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const filteredTelemetry = (device.telemetry || []).filter((entry: any) => {
+      const ts = new Date(entry.timestamp);
+      return ts >= start && ts <= end;
+    });
+
+    return NextResponse.json({ deviceId, telemetry: filteredTelemetry });
+  } catch (error) {
+    console.error('Failed to fetch telemetry report:', error);
+    return NextResponse.json({ error: 'Failed to fetch telemetry report' }, { status: 500 });
+  }
+}

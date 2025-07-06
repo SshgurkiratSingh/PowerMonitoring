@@ -12,6 +12,15 @@ import {
   Spinner,
   Progress,
   Badge,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  Select,
+  SelectItem,
+  Input,
 } from "@heroui/react";
 import {
   MdPower,
@@ -29,19 +38,34 @@ import {
   MdBolt,
   MdTrendingUp,
   MdSchedule,
+  MdGroup,
+  MdControlCamera,
+  MdSettings,
+  MdAnalytics,
+  MdSpeed,
+  MdThermostat,
+  MdElectricMeter,
+  MdPowerSettingsNew,
+  MdPlayArrow,
+  MdStop,
+  MdPause,
 } from "react-icons/md";
 import { FaExclamationTriangle, FaInfoCircle } from "react-icons/fa";
-import { IoStatsChart, IoHardwareChip, IoAlert } from "react-icons/io5";
+import { IoStatsChart, IoHardwareChip, IoAlert, IoFlash } from "react-icons/io5";
+import { DashboardStats, FleetOverview, EnergyAnalytics, DeviceGroup, CommandType } from "@/types";
 
 interface DeviceStats {
-  status: "ONLINE" | "OFFLINE" | "FAULT";
+  status: "ONLINE" | "OFFLINE" | "FAULT" | "MAINTENANCE";
   _count: number;
 }
 
 interface LatestAlert {
   id: string;
   message: string;
-  level: "INFO" | "WARNING" | "CRITICAL";
+  level: "INFO" | "WARNING" | "CRITICAL" | "EMERGENCY";
+  type: string;
+  value?: number;
+  threshold?: number;
   createdAt: string;
   device: {
     deviceId: string;
@@ -53,6 +77,9 @@ interface DashboardData {
   latestAlerts: LatestAlert[];
   totalPower: number;
   timestamp: string;
+  dashboardStats: DashboardStats;
+  fleetOverview: FleetOverview;
+  energyAnalytics: EnergyAnalytics;
   error?: string;
 }
 
@@ -61,20 +88,35 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>("");
+  const [commandType, setCommandType] = useState<CommandType>(CommandType.POWER_ON);
+  const [commandValue, setCommandValue] = useState<string>("ON");
+  const [sendingCommand, setSendingCommand] = useState(false);
+  
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const fetchDashboardData = async () => {
     try {
       if (!loading) setRefreshing(true);
-      const response = await fetch("/api/dashboard/stats");
-      if (!response.ok) {
+      const [statsResponse, groupsResponse] = await Promise.all([
+        fetch("/api/dashboard/stats"),
+        fetch("/api/devices/groups"),
+      ]);
+
+      if (!statsResponse.ok) {
         throw new Error("Failed to fetch dashboard data");
       }
-      const result = await response.json();
-      console.log("Dashboard data received:", result); // Debug log
-      setData(result);
+
+      const statsResult = await statsResponse.json();
+      const groupsResult = await groupsResponse.json();
+
+      console.log("Dashboard data received:", statsResult);
+      setData(statsResult);
+      setDeviceGroups(groupsResult.groups || []);
       setError(null);
     } catch (err) {
-      console.error("Dashboard fetch error:", err); // Debug log
+      console.error("Dashboard fetch error:", err);
       setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
@@ -114,6 +156,14 @@ export default function Dashboard() {
           bgColor: "bg-danger-100",
           textColor: "text-danger-700",
         };
+      case "MAINTENANCE":
+        return {
+          color: "warning" as const,
+          icon: <MdSettings className="w-5 h-5" />,
+          variant: "flat" as const,
+          bgColor: "bg-warning-100",
+          textColor: "text-warning-700",
+        };
       default:
         return {
           color: "default" as const,
@@ -148,6 +198,13 @@ export default function Dashboard() {
           icon: <MdError className="w-4 h-4" />,
           borderColor: "border-l-danger",
         };
+      case "EMERGENCY":
+        return {
+          color: "danger" as const,
+          variant: "bordered" as const,
+          icon: <MdError className="w-4 h-4" />,
+          borderColor: "border-l-danger",
+        };
       default:
         return {
           color: "default" as const,
@@ -170,8 +227,9 @@ export default function Dashboard() {
 
   const getCriticalAlerts = () => {
     return (
-      data?.latestAlerts?.filter((alert) => alert.level === "CRITICAL")
-        ?.length || 0
+      data?.latestAlerts?.filter((alert) => 
+        alert.level === "CRITICAL" || alert.level === "EMERGENCY"
+      )?.length || 0
     );
   };
 
@@ -186,6 +244,39 @@ export default function Dashboard() {
       return `${diffHours}h ${diffMinutes}m ago`;
     } else {
       return `${diffMinutes}m ago`;
+    }
+  };
+
+  const handleSendCommand = async () => {
+    if (!selectedGroup) return;
+
+    setSendingCommand(true);
+    try {
+      const response = await fetch("/api/devices/commands", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          groupId: selectedGroup,
+          commandType,
+          value: commandValue,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Command sent:", result);
+        onClose();
+        // Refresh dashboard data
+        setTimeout(fetchDashboardData, 2000);
+      } else {
+        console.error("Failed to send command");
+      }
+    } catch (error) {
+      console.error("Error sending command:", error);
+    } finally {
+      setSendingCommand(false);
     }
   };
 
@@ -246,19 +337,29 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <Button
-          color="primary"
-          variant="flat"
-          onPress={fetchDashboardData}
-          isLoading={refreshing}
-          startContent={!refreshing && <MdRefresh className="w-4 h-4" />}
-        >
-          {refreshing ? "Refreshing..." : "Refresh"}
-        </Button>
+        <div className="flex space-x-2">
+          <Button
+            color="primary"
+            variant="flat"
+            onPress={onOpen}
+            startContent={<MdControlCamera className="w-4 h-4" />}
+          >
+            Send Command
+          </Button>
+          <Button
+            color="primary"
+            variant="flat"
+            onPress={fetchDashboardData}
+            isLoading={refreshing}
+            startContent={!refreshing && <MdRefresh className="w-4 h-4" />}
+          >
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
-      {/* Key Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Fleet Overview - Enhanced Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Power Card */}
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -270,10 +371,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardBody className="pt-0">
             <div className="text-3xl font-bold">
-              {data?.totalPower?.toFixed(1) || 0} kW
+              {data?.dashboardStats?.totalPower?.toFixed(1) || 0} kW
             </div>
             <Progress
-              value={Math.min(((data?.totalPower || 0) / 100) * 100, 100)}
+              value={Math.min(((data?.dashboardStats?.totalPower || 0) / 100) * 100, 100)}
               color="warning"
               className="mt-2"
               size="sm"
@@ -282,55 +383,203 @@ export default function Dashboard() {
           </CardBody>
         </Card>
 
-        {/* Active Devices */}
+        {/* Network Health */}
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex items-center space-x-2">
               <MdSignalWifiStatusbar4Bar className="w-6 h-6" />
-              <span className="text-sm font-medium">Active Devices</span>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <div className="text-3xl font-bold">{getActiveDevices()}</div>
-            <p className="text-xs opacity-90 mt-1">
-              of {getTotalDevices()} total
-            </p>
-          </CardBody>
-        </Card>
-
-        {/* Critical Alerts */}
-        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex items-center space-x-2">
-              <MdError className="w-6 h-6" />
-              <span className="text-sm font-medium">Critical Alerts</span>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <div className="text-3xl font-bold">{getCriticalAlerts()}</div>
-            <p className="text-xs opacity-90 mt-1">Immediate attention</p>
-          </CardBody>
-        </Card>
-
-        {/* Total Alerts */}
-        <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex items-center space-x-2">
-              <MdNotifications className="w-6 h-6" />
-              <span className="text-sm font-medium">Total Alerts</span>
+              <span className="text-sm font-medium">Network Health</span>
             </div>
           </CardHeader>
           <CardBody className="pt-0">
             <div className="text-3xl font-bold">
-              {data?.latestAlerts?.length || 0}
+              {data?.dashboardStats?.networkHealth?.toFixed(1) || 0}%
             </div>
-            <p className="text-xs opacity-90 mt-1">Recent activity</p>
+            <Progress
+              value={data?.dashboardStats?.networkHealth || 0}
+              color="success"
+              className="mt-2"
+              size="sm"
+            />
+            <p className="text-xs opacity-90 mt-1">
+              {data?.dashboardStats?.onlineDevices || 0} of {data?.dashboardStats?.totalDevices || 0} online
+            </p>
+          </CardBody>
+        </Card>
+
+        {/* Energy Savings */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center space-x-2">
+              <IoFlash className="w-6 h-6" />
+              <span className="text-sm font-medium">Energy Savings</span>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="text-3xl font-bold">
+              {data?.fleetOverview?.energySavings?.toFixed(1) || 0} kWh
+            </div>
+            <p className="text-xs opacity-90 mt-1">This month</p>
+          </CardBody>
+        </Card>
+
+        {/* Device Groups */}
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center space-x-2">
+              <MdGroup className="w-6 h-6" />
+              <span className="text-sm font-medium">Device Groups</span>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="text-3xl font-bold">
+              {data?.dashboardStats?.deviceGroups || 0}
+            </div>
+            <p className="text-xs opacity-90 mt-1">Managed groups</p>
           </CardBody>
         </Card>
       </div>
 
-      {/* Device Status Cards */}
+      {/* Fleet Overview Details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-br from-sky-500 to-sky-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center space-x-2">
+              <MdDevices className="w-6 h-6" />
+              <span className="text-sm font-medium">Total Panels</span>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="text-2xl font-bold">{data?.fleetOverview?.totalPanels || 0}</div>
+            <p className="text-xs opacity-90 mt-1">Installed devices</p>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center space-x-2">
+              <MdSpeed className="w-6 h-6" />
+              <span className="text-sm font-medium">Total Feeders</span>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="text-2xl font-bold">{data?.fleetOverview?.totalFeeders || 0}</div>
+            <p className="text-xs opacity-90 mt-1">Power distribution</p>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center space-x-2">
+              <MdPower className="w-6 h-6" />
+              <span className="text-sm font-medium">Total Lights</span>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="text-2xl font-bold">{data?.fleetOverview?.totalLights || 0}</div>
+            <p className="text-xs opacity-90 mt-1">Individual lights</p>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Energy Analytics */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <MdAnalytics className="w-5 h-5 text-default-600" />
+              <h3 className="text-lg font-semibold">Energy & Load Analytics</h3>
+            </div>
+            <Badge content="Real-time" color="success">
+              <IoStatsChart className="w-5 h-5 text-default-400" />
+            </Badge>
+          </div>
+        </CardHeader>
+        <Divider />
+        <CardBody>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Voltage */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <h4 className="font-semibold">Voltage (V)</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {data?.energyAnalytics?.voltage?.map((v, i) => (
+                  <div key={i} className="text-center p-2 bg-default-100 rounded">
+                    <div className="text-lg font-bold text-primary">V{i + 1}</div>
+                    <div className="text-sm">{v.toFixed(1)}V</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Current */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <MdElectricMeter className="w-5 h-5 text-warning" />
+                <h4 className="font-semibold">Current (A)</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {data?.energyAnalytics?.current?.map((c, i) => (
+                  <div key={i} className="text-center p-2 bg-default-100 rounded">
+                    <div className="text-lg font-bold text-warning">I{i + 1}</div>
+                    <div className="text-sm">{c.toFixed(1)}A</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Power Factor */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <MdThermostat className="w-5 h-5 text-success" />
+                <h4 className="font-semibold">Power Factor</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {data?.energyAnalytics?.powerFactor?.map((pf, i) => (
+                  <div key={i} className="text-center p-2 bg-default-100 rounded">
+                    <div className="text-lg font-bold text-success">PF{i + 1}</div>
+                    <div className="text-sm">{pf.toFixed(2)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* System Status */}
+          <div className="mt-6 pt-4 border-t border-default-200">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {data?.energyAnalytics?.frequency?.toFixed(1) || 0} Hz
+                </div>
+                <div className="text-sm text-default-500">Frequency</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-warning">
+                  {data?.energyAnalytics?.temperature?.toFixed(1) || 0}°C
+                </div>
+                <div className="text-sm text-default-500">Temperature</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-success">
+                  {data?.energyAnalytics?.phaseStatus?.filter(Boolean).length || 0}/3
+                </div>
+                <div className="text-sm text-default-500">Active Phases</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-danger">
+                  {data?.dashboardStats?.criticalAlerts || 0}
+                </div>
+                <div className="text-sm text-default-500">Critical Alerts</div>
+              </div>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Device Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {data?.deviceStats?.map((stat) => {
           const config = getStatusConfig(stat.status);
           return (
@@ -421,9 +670,11 @@ export default function Dashboard() {
                             <MdAccessTime className="w-3 h-3 mr-1" />
                             {formatRelativeTime(alert.createdAt)}
                           </div>
-                          <div className="text-xs text-default-400">
-                            {new Date(alert.createdAt).toLocaleString()}
-                          </div>
+                          {alert.value && alert.threshold && (
+                            <div className="text-xs text-default-400">
+                              {alert.value} / {alert.threshold}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <Chip
@@ -442,6 +693,66 @@ export default function Dashboard() {
           )}
         </CardBody>
       </Card>
+
+      {/* Command Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} size="lg">
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center space-x-2">
+              <MdControlCamera className="w-5 h-5" />
+              <span>Send Command</span>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Select
+                label="Device Group"
+                placeholder="Select a device group"
+                selectedKeys={selectedGroup ? [selectedGroup] : []}
+                onSelectionChange={(keys) => setSelectedGroup(Array.from(keys)[0] as string)}
+              >
+                {deviceGroups.map((group) => (
+                  <SelectItem key={group.id}>
+                    {group.name} ({group.devices.length} devices)
+                  </SelectItem>
+                ))}
+              </Select>
+
+              <Select
+                label="Command Type"
+                selectedKeys={[commandType]}
+                onSelectionChange={(keys) => setCommandType(Array.from(keys)[0] as CommandType)}
+              >
+                <SelectItem key={CommandType.POWER_ON}>Power On</SelectItem>
+                <SelectItem key={CommandType.POWER_OFF}>Power Off</SelectItem>
+                <SelectItem key={CommandType.DIMMING}>Dimming</SelectItem>
+                <SelectItem key={CommandType.RESET}>Reset</SelectItem>
+                <SelectItem key={CommandType.DIAGNOSTIC}>Diagnostic</SelectItem>
+              </Select>
+
+              <Input
+                label="Command Value"
+                value={commandValue}
+                onChange={(e) => setCommandValue(e.target.value)}
+                placeholder="ON, OFF, 50%, etc."
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="danger" variant="light" onPress={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              color="primary" 
+              onPress={handleSendCommand}
+              isLoading={sendingCommand}
+              isDisabled={!selectedGroup}
+            >
+              {sendingCommand ? "Sending..." : "Send Command"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

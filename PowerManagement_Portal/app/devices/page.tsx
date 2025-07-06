@@ -5,8 +5,11 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SearchIcon } from "@/components/icons";
+import { DeviceStatus } from "@/types";
 
 interface Device {
   id: string;
@@ -61,11 +64,34 @@ const ThermometerIcon = () => (
 );
 
 export default function DevicesPage() {
+  const router = useRouter();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("deviceId");
+  
+  // Add Device Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newDevice, setNewDevice] = useState({
+    deviceId: "",
+    powerRating: "",
+    voltage: "",
+    frequency: "",
+    incomingCurrent: "",
+    ipRating: "",
+    status: DeviceStatus.OFFLINE,
+    address: "",
+    longitude: "",
+    latitude: ""
+  });
+
+  // Add state for editing device
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  const [editDeviceData, setEditDeviceData] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     fetchDevices();
@@ -133,6 +159,122 @@ export default function DevicesPage() {
     }
   };
 
+  const handleAddDevice = async () => {
+    setIsAdding(true);
+    try {
+      const response = await fetch("/api/devices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deviceId: newDevice.deviceId,
+          powerRating: newDevice.powerRating,
+          voltage: newDevice.voltage,
+          frequency: newDevice.frequency,
+          incomingCurrent: newDevice.incomingCurrent,
+          ipRating: newDevice.ipRating,
+          coordinates: [parseFloat(newDevice.longitude) || 0, parseFloat(newDevice.latitude) || 0],
+          address: newDevice.address
+        }),
+      });
+
+      if (response.ok) {
+        await fetchDevices(); // Refresh the devices list
+        setIsAddModalOpen(false);
+        // Reset form
+        setNewDevice({
+          deviceId: "",
+          powerRating: "",
+          voltage: "",
+          frequency: "",
+          incomingCurrent: "",
+          ipRating: "",
+          status: DeviceStatus.OFFLINE,
+          address: "",
+          longitude: "",
+          latitude: ""
+        });
+        alert("Device added successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Error adding device: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Error adding device:", error);
+      alert("Error adding device");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const resetAddDeviceForm = () => {
+    setNewDevice({
+      deviceId: "",
+      powerRating: "",
+      voltage: "",
+      frequency: "",
+      incomingCurrent: "",
+      ipRating: "",
+      status: DeviceStatus.OFFLINE,
+      address: "",
+      longitude: "",
+      latitude: ""
+    });
+  };
+
+  // Edit button handler
+  const handleEditClick = (device: Device) => {
+    setEditingDevice(device);
+    setEditDeviceData({
+      ...device,
+      longitude: device.location.coordinates[0].toString(),
+      latitude: device.location.coordinates[1].toString(),
+      address: device.location.address,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Edit device API call
+  const handleEditDevice = async () => {
+    if (!editingDevice) return;
+    setIsEditing(true);
+    try {
+      const response = await fetch(`/api/devices/${editingDevice.deviceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId: editDeviceData.deviceId,
+          powerRating: editDeviceData.powerRating,
+          voltage: editDeviceData.voltage,
+          frequency: editDeviceData.frequency,
+          incomingCurrent: editDeviceData.incomingCurrent,
+          ipRating: editDeviceData.ipRating,
+          status: editDeviceData.status,
+          location: {
+            coordinates: [parseFloat(editDeviceData.longitude) || 0, parseFloat(editDeviceData.latitude) || 0],
+            address: editDeviceData.address
+          }
+        })
+      });
+      if (response.ok) {
+        await fetchDevices();
+        setIsEditModalOpen(false);
+        setEditingDevice(null);
+        setEditDeviceData(null);
+        alert("Device updated successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Error updating device: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating device:", error);
+      alert("Error updating device");
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -195,6 +337,7 @@ export default function DevicesPage() {
               color="primary"
               className="bg-gradient-to-r from-sky-500 to-blue-600"
               startContent={<PlusIcon />}
+              onClick={() => setIsAddModalOpen(true)}
             >
               Add Device
             </Button>
@@ -304,8 +447,14 @@ export default function DevicesPage() {
 
                 {/* Actions */}
                 <div className="flex space-x-2 pt-2">
-                  <Button size="sm" color="primary" variant="flat" className="flex-1">
-                    Details
+                  <Button 
+                    size="sm" 
+                    color="primary" 
+                    variant="flat" 
+                    className="flex-1"
+                    onClick={() => handleEditClick(device)}
+                  >
+                    Edit
                   </Button>
                   <Button size="sm" color="secondary" variant="flat" className="flex-1">
                     Schedule
@@ -324,6 +473,294 @@ export default function DevicesPage() {
           </CardBody>
         </Card>
       )}
+
+      {/* Add Device Modal */}
+      <Modal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)}
+        size="2xl"
+        scrollBehavior="inside"
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            resetAddDeviceForm();
+          }
+        }}
+      >
+        <ModalContent className="bg-slate-900 border border-slate-700">
+          <ModalHeader className="text-white">
+            <h2 className="text-xl font-semibold">Add New Device</h2>
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Device ID"
+                  value={newDevice.deviceId}
+                  onChange={(e) => setNewDevice({ ...newDevice, deviceId: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="e.g., CCMS-001"
+                  isRequired
+                />
+                <Input
+                  label="Power Rating"
+                  value={newDevice.powerRating}
+                  onChange={(e) => setNewDevice({ ...newDevice, powerRating: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="e.g., 50kW"
+                  isRequired
+                />
+                <Input
+                  label="Voltage"
+                  value={newDevice.voltage}
+                  onChange={(e) => setNewDevice({ ...newDevice, voltage: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="e.g., 415V"
+                  isRequired
+                />
+                <Input
+                  label="Frequency"
+                  value={newDevice.frequency}
+                  onChange={(e) => setNewDevice({ ...newDevice, frequency: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="e.g., 50Hz"
+                  isRequired
+                />
+                <Input
+                  label="Incoming Current"
+                  value={newDevice.incomingCurrent}
+                  onChange={(e) => setNewDevice({ ...newDevice, incomingCurrent: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="e.g., 48A"
+                  isRequired
+                />
+                <Input
+                  label="IP Rating"
+                  value={newDevice.ipRating}
+                  onChange={(e) => setNewDevice({ ...newDevice, ipRating: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="e.g., IP65"
+                  isRequired
+                />
+              </div>
+
+              <Input
+                label="Address"
+                value={newDevice.address}
+                onChange={(e) => setNewDevice({ ...newDevice, address: e.target.value })}
+                variant="bordered"
+                color="primary"
+                placeholder="Device location address"
+                isRequired
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Longitude"
+                  type="number"
+                  value={newDevice.longitude}
+                  onChange={(e) => setNewDevice({ ...newDevice, longitude: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="0.000000"
+                  step="0.000001"
+                />
+                <Input
+                  label="Latitude"
+                  type="number"
+                  value={newDevice.latitude}
+                  onChange={(e) => setNewDevice({ ...newDevice, latitude: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="0.000000"
+                  step="0.000001"
+                />
+              </div>
+
+              <Select
+                label="Initial Status"
+                selectedKeys={[newDevice.status]}
+                onChange={(e) => setNewDevice({ ...newDevice, status: e.target.value as DeviceStatus })}
+                variant="bordered"
+                color="primary"
+              >
+                <SelectItem key={DeviceStatus.OFFLINE}>
+                  Offline
+                </SelectItem>
+                <SelectItem key={DeviceStatus.ONLINE}>
+                  Online
+                </SelectItem>
+                <SelectItem key={DeviceStatus.FAULT}>
+                  Fault
+                </SelectItem>
+              </Select>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              color="default" 
+              variant="flat" 
+              onPress={() => setIsAddModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              color="primary" 
+              onPress={handleAddDevice}
+              isLoading={isAdding}
+              isDisabled={!newDevice.deviceId || !newDevice.powerRating || !newDevice.voltage || !newDevice.frequency || !newDevice.incomingCurrent || !newDevice.ipRating}
+            >
+              Add Device
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Device Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)}
+        size="2xl"
+        scrollBehavior="inside"
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setEditingDevice(null);
+            setEditDeviceData(null);
+          }
+        }}
+      >
+        <ModalContent className="bg-slate-900 border border-slate-700">
+          <ModalHeader className="text-white">
+            <h2 className="text-xl font-semibold">Edit Device</h2>
+          </ModalHeader>
+          <ModalBody>
+            {editDeviceData && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Device ID"
+                    value={editDeviceData.deviceId}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, deviceId: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="e.g., CCMS-001"
+                    isRequired
+                  />
+                  <Input
+                    label="Power Rating"
+                    value={editDeviceData.powerRating}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, powerRating: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="e.g., 50kW"
+                    isRequired
+                  />
+                  <Input
+                    label="Voltage"
+                    value={editDeviceData.voltage}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, voltage: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="e.g., 415V"
+                    isRequired
+                  />
+                  <Input
+                    label="Frequency"
+                    value={editDeviceData.frequency}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, frequency: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="e.g., 50Hz"
+                    isRequired
+                  />
+                  <Input
+                    label="Incoming Current"
+                    value={editDeviceData.incomingCurrent}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, incomingCurrent: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="e.g., 48A"
+                    isRequired
+                  />
+                  <Input
+                    label="IP Rating"
+                    value={editDeviceData.ipRating}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, ipRating: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="e.g., IP65"
+                    isRequired
+                  />
+                </div>
+                <Input
+                  label="Address"
+                  value={editDeviceData.address}
+                  onChange={(e) => setEditDeviceData({ ...editDeviceData, address: e.target.value })}
+                  variant="bordered"
+                  color="primary"
+                  placeholder="Device location address"
+                  isRequired
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Longitude"
+                    type="number"
+                    value={editDeviceData.longitude}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, longitude: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="0.000000"
+                    step="0.000001"
+                  />
+                  <Input
+                    label="Latitude"
+                    type="number"
+                    value={editDeviceData.latitude}
+                    onChange={(e) => setEditDeviceData({ ...editDeviceData, latitude: e.target.value })}
+                    variant="bordered"
+                    color="primary"
+                    placeholder="0.000000"
+                    step="0.000001"
+                  />
+                </div>
+                <Select
+                  label="Status"
+                  selectedKeys={[editDeviceData.status]}
+                  onChange={(e) => setEditDeviceData({ ...editDeviceData, status: e.target.value as DeviceStatus })}
+                  variant="bordered"
+                  color="primary"
+                >
+                  <SelectItem key={DeviceStatus.OFFLINE}>Offline</SelectItem>
+                  <SelectItem key={DeviceStatus.ONLINE}>Online</SelectItem>
+                  <SelectItem key={DeviceStatus.FAULT}>Fault</SelectItem>
+                </Select>
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              color="default" 
+              variant="flat" 
+              onPress={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              color="primary" 
+              onPress={handleEditDevice}
+              isLoading={isEditing}
+              isDisabled={!editDeviceData || !editDeviceData.deviceId || !editDeviceData.powerRating || !editDeviceData.voltage || !editDeviceData.frequency || !editDeviceData.incomingCurrent || !editDeviceData.ipRating}
+            >
+              Save Changes
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 } 

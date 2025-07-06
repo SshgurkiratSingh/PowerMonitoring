@@ -23,10 +23,15 @@ model CCMSDevice {
   location        Location
   telemetry       TelemetryData[]
   schedules       Schedule[]
-  latestAlert     String // Renamed from 'alert'
+  alerts          Alert[]
+  deviceGroup     DeviceGroup?    @relation(fields: [groupId], references: [id])
+  groupId         String?         @db.ObjectId
+  alertThresholds AlertThreshold[]
+  commands        Command[]
+  isOn            Boolean         @default(false)
+  lastCommand     DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  alerts          Alert[] // Renamed from 'Alert' for consistency
 }
 
 type Location {
@@ -41,27 +46,68 @@ type TelemetryData {
   power       Float[] // [P1, P2, P3]
   powerFactor Float[] // [PF1, PF2, PF3]
   temperature Float
+  totalPower  Float   // Total power consumption
+  totalEnergy Float   // Cumulative energy consumption
+  frequency   Float   // System frequency
+  phaseStatus Boolean[] // [Phase1, Phase2, Phase3] status
+  doorStatus  Boolean? // Door open/closed status
+  acPowerStatus Boolean? // AC power status
+  rtcDrift    Float?   // RTC drift in seconds
 }
 
 enum DeviceStatus {
   ONLINE
   OFFLINE
   FAULT
+  MAINTENANCE
+}
+
+model DeviceGroup {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String       @unique
+  description String?
+  devices     CCMSDevice[]
+  commands    Command[]
+  schedules   Schedule[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Schedule {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  device    CCMSDevice   @relation(fields: [deviceId], references: [id])
-  deviceId  String       @db.ObjectId
-  startTime DateTime
-  endTime   DateTime
-  mode      ScheduleMode @default(AUTO)
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  device      CCMSDevice?   @relation(fields: [deviceId], references: [id])
+  deviceId    String?       @db.ObjectId
+  group       DeviceGroup?  @relation(fields: [groupId], references: [id])
+  groupId     String?       @db.ObjectId
+  name        String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  mode        ScheduleMode  @default(AUTO)
+  type        ScheduleType  @default(DAILY)
+  daysOfWeek  Int[]         // [0=Sunday, 1=Monday, ..., 6=Saturday]
+  isActive    Boolean       @default(true)
+  isHoliday   Boolean       @default(false)
+  holidayName String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 
 enum ScheduleMode {
   AUTO
   MANUAL
   TWILIGHT
+  ASTRONOMICAL
+  SUNRISE_SUNSET
+}
+
+enum ScheduleType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  CUSTOM
+  HOLIDAY
 }
 
 model Alert {
@@ -70,6 +116,12 @@ model Alert {
   deviceId  String     @db.ObjectId
   message   String
   level     AlertLevel
+  type      AlertType
+  value     Float?     // Actual value that triggered the alert
+  threshold Float?     // Threshold value
+  isAcknowledged Boolean @default(false)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
   createdAt DateTime   @default(now())
 }
 
@@ -77,4 +129,76 @@ enum AlertLevel {
   INFO
   WARNING
   CRITICAL
+  EMERGENCY
+}
+
+enum AlertType {
+  VOLTAGE_HIGH
+  VOLTAGE_LOW
+  CURRENT_HIGH
+  TEMPERATURE_HIGH
+  POWER_FACTOR_LOW
+  OVERLOAD
+  FEEDER_TRIP
+  RTC_DRIFT
+  DOOR_OPEN
+  AC_POWER_LOSS
+  COMMUNICATION_LOSS
+  PHASE_FAULT
+  GENERAL_FAULT
+}
+
+model AlertThreshold {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  device    CCMSDevice @relation(fields: [deviceId], references: [id])
+  deviceId  String     @db.ObjectId
+  type      AlertType
+  minValue  Float?
+  maxValue  Float?
+  isEnabled Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([deviceId, type])
+}
+
+model Command {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  device    CCMSDevice? @relation(fields: [deviceId], references: [id])
+  deviceId  String?     @db.ObjectId
+  group     DeviceGroup? @relation(fields: [groupId], references: [id])
+  groupId   String?     @db.ObjectId
+  type      CommandType
+  value     String      // ON, OFF, or other command values
+  status    CommandStatus @default(PENDING)
+  sentAt    DateTime    @default(now())
+  executedAt DateTime?
+  response  String?     // Response from device
+  error     String?     // Error message if failed
+}
+
+enum CommandType {
+  POWER_ON
+  POWER_OFF
+  DIMMING
+  SCHEDULE_OVERRIDE
+  RESET
+  DIAGNOSTIC
+  CONFIG_UPDATE
+}
+
+enum CommandStatus {
+  PENDING
+  SENT
+  EXECUTED
+  FAILED
+  TIMEOUT
+}
+
+model SystemSettings {
+  id                    String  @id @default(auto()) @map("_id") @db.ObjectId
+  key                   String  @unique
+  value                 String
+  description           String?
+  updatedAt             DateTime @updatedAt
 }

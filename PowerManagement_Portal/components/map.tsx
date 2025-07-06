@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardBody, Button } from "@heroui/react";
 import {
   MdLocationOn,
@@ -9,7 +9,7 @@ import {
   MdCheckCircle,
   MdWarning,
 } from "react-icons/md";
-import type { Map as LeafletMap, TileLayer, Marker } from "leaflet";
+import { Map, Marker, Overlay } from "pigeon-maps";
 
 interface DeviceLocation {
   id: string;
@@ -29,53 +29,165 @@ interface MapData {
   timestamp: string;
 }
 
+// Custom marker component
+const CustomMarker = ({
+  status,
+  onClick,
+  device,
+}: {
+  status: string;
+  onClick: () => void;
+  device: DeviceLocation;
+}) => {
+  const getMarkerColor = (status: string) => {
+    switch (status) {
+      case "ONLINE":
+        return "#4ade80"; // green
+      case "OFFLINE":
+        return "#facc15"; // yellow
+      case "FAULT":
+        return "#f87171"; // red
+      default:
+        return "#60a5fa"; // blue
+    }
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: "50%",
+        backgroundColor: getMarkerColor(status),
+        border: "3px solid white",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transform: "translate(-50%, -50%)",
+      }}
+    />
+  );
+};
+
+// Popup component
+const DevicePopup = ({
+  device,
+  onClose,
+}: {
+  device: DeviceLocation;
+  onClose: () => void;
+}) => {
+  return (
+    <div
+      style={{
+        background: "white",
+        padding: "12px",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+        border: "1px solid #e5e7eb",
+        minWidth: "200px",
+        transform: "translate(-50%, -100%)",
+        marginTop: "-10px",
+        position: "relative",
+      }}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          top: "4px",
+          right: "4px",
+          background: "none",
+          border: "none",
+          fontSize: "16px",
+          cursor: "pointer",
+          color: "#666",
+          padding: "4px",
+        }}
+      >
+        ×
+      </button>
+
+      {/* Arrow pointing down */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "-8px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 0,
+          height: 0,
+          borderLeft: "8px solid transparent",
+          borderRight: "8px solid transparent",
+          borderTop: "8px solid white",
+        }}
+      />
+
+      <div>
+        <h3
+          style={{
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#1f2937",
+            fontSize: "14px",
+          }}
+        >
+          {device.deviceId}
+        </h3>
+        <div style={{ fontSize: "12px", color: "#4b5563" }}>
+          <div style={{ marginBottom: "4px" }}>
+            Status:{" "}
+            <span
+              style={{
+                fontWeight: "bold",
+                color:
+                  device.status === "ONLINE"
+                    ? "#059669"
+                    : device.status === "OFFLINE"
+                      ? "#d97706"
+                      : "#dc2626",
+              }}
+            >
+              {device.status}
+            </span>
+          </div>
+          <div style={{ marginBottom: "4px" }}>Address: {device.address}</div>
+          <div style={{ marginBottom: "4px" }}>
+            Power: {device.currentPower.toFixed(1)} kW
+          </div>
+          <div style={{ marginBottom: "4px" }}>
+            Rating: {device.powerRating}
+          </div>
+          {device.temperature != null && (
+            <div>Temp: {device.temperature.toFixed(1)}°C</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const initialCenter: [number, number] = [30.7333, 76.7794];
+const initialZoom = 10;
+
 export default function MapComponent() {
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
-  const [mapReady, setMapReady] = useState(false);
-
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<LeafletMap | null>(null);
-  const tileLayerRef = useRef<TileLayer | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const L = useRef<typeof import("leaflet") | null>(null);
-
-  // Dynamically load Leaflet
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        if (typeof window === "undefined") return;
-        const leaflet = await import("leaflet");
-        if (!mounted) return;
-        L.current = leaflet;
-        // Fix default marker icons
-        delete (leaflet.Icon.Default.prototype as any)._getIconUrl;
-        leaflet.Icon.Default.mergeOptions({
-          iconRetinaUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-          iconUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-          shadowUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-        });
-        setLeafletLoaded(true);
-        console.log("✅ Leaflet loaded successfully");
-      } catch (e) {
-        console.error("❌ Failed to load Leaflet", e);
-        if (mounted) setError("Failed to load map library");
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const [selectedDevice, setSelectedDevice] = useState<DeviceLocation | null>(
+    null
+  );
+  const [center, setCenter] = useState<[number, number]>(initialCenter);
+  const [zoom, setZoom] = useState(initialZoom);
 
   // Fetch device locations from API
   const fetchDeviceLocations = async () => {
     try {
+      setLoading(true);
       const res = await fetch("/api/devices/locations");
       if (!res.ok) throw new Error("Failed to fetch device locations");
       const data: MapData = await res.json();
@@ -89,111 +201,12 @@ export default function MapComponent() {
     }
   };
 
-  // Initialize the map once Leaflet is ready
-  useLayoutEffect(() => {
-    if (!leafletLoaded || !mapRef.current || !L.current || mapInstance.current)
-      return;
-
-    let mounted = true;
-    const initMap = () => {
-      const leaflet = L.current!;
-      const map = leaflet.map(mapRef.current!, {
-        center: [30.7333, 76.7794], // Chandigarh
-        zoom: 10,
-        zoomControl: true,
-        scrollWheelZoom: true,
-        attributionControl: true,
-        preferCanvas: true,
-      });
-      mapInstance.current = map;
-
-      // Handle loading overlay via Leaflet events
-      map
-        .on("dataloading", () => {
-          console.log("🔄 Tiles loading...");
-          setMapReady(false);
-        })
-        .on("dataload", () => {
-          console.log("✅ Tiles all loaded");
-          setMapReady(true);
-          setTimeout(() => map.invalidateSize(true), 100);
-        })
-        .whenReady(() => {
-          console.log("🗺️ Map initial ready");
-          setMapReady(true);
-          setTimeout(() => map.invalidateSize(true), 100);
-        });
-
-      // Primary tile layer (CartoDB Positron)
-      tileLayerRef.current = leaflet
-        .tileLayer(
-          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-          {
-            attribution:
-              '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>',
-            maxZoom: 19,
-            subdomains: "abcd",
-          }
-        )
-        .addTo(map);
-
-      console.log("✅ Map initialization complete");
-    };
-
-    // Delay to ensure container dimensions are correct
-    const timer = setTimeout(initMap, 50);
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-        tileLayerRef.current = null;
-        setMapReady(false);
-      }
-    };
-  }, [leafletLoaded]);
-
-  // Add markers whenever data or map readiness changes
-  useEffect(() => {
-    const map = mapInstance.current;
-    const leaflet = L.current;
-    if (!map || !leaflet || !mapData?.devices || !mapReady) return;
-
-    // Remove old markers
-    markersRef.current.forEach((m) => map.removeLayer(m));
-    markersRef.current = [];
-
-    // Add new markers
-    mapData.devices.forEach((dev) => {
-      const [lng, lat] = dev.coordinates;
-      if (isNaN(lat) || isNaN(lng)) return;
-      const marker = leaflet.marker([lat, lng]);
-      marker
-        .bindPopup(
-          `<div style="min-width:200px">
-             <h3>${dev.deviceId}</h3>
-             <div>Status: ${dev.status}</div>
-             <div>Address: ${dev.address}</div>
-             <div>Power: ${dev.currentPower.toFixed(1)} kW</div>
-             <div>Rating: ${dev.powerRating}</div>
-             ${
-               dev.temperature != null
-                 ? `<div>Temp: ${dev.temperature.toFixed(1)}°C</div>`
-                 : ""
-             }
-           </div>`
-        )
-        .addTo(map);
-      markersRef.current.push(marker);
-    });
-
-    // Fit bounds to markers
-    if (markersRef.current.length) {
-      const group = leaflet.featureGroup(markersRef.current);
-      map.fitBounds(group.getBounds(), { padding: [20, 20], maxZoom: 15 });
-    }
-  }, [mapData, mapReady]);
+  // Calculate center and zoom to fit all devices
+  const fitToDevices = useCallback(() => {
+    // Always center to Chandigarh
+    setCenter([30.7333, 76.7794]);
+    setZoom(12);
+  }, []);
 
   // Initial fetch and polling
   useEffect(() => {
@@ -202,26 +215,30 @@ export default function MapComponent() {
     return () => clearInterval(id);
   }, []);
 
-  // Handle window resize
+  // Fit to devices when data changes
   useEffect(() => {
-    const onResize = () => {
-      if (mapInstance.current && mapReady) {
-        setTimeout(() => mapInstance.current!.invalidateSize(true), 200);
-      }
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [mapReady]);
+    if (mapData?.devices && mapData.devices.length > 0) {
+      fitToDevices();
+    }
+  }, [mapData, fitToDevices]);
 
-  // Render loading, error or map
-  if (loading || !leafletLoaded) {
+  // Handle marker click
+  const handleMarkerClick = (device: DeviceLocation) => {
+    setSelectedDevice(device);
+  };
+
+  // Handle popup close
+  const handlePopupClose = () => {
+    setSelectedDevice(null);
+  };
+
+  // Render loading state
+  if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-slate-800 rounded-lg">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2" />
-          <p className="text-white text-sm">
-            {!leafletLoaded ? "Loading map library..." : "Loading map..."}
-          </p>
+          <p className="text-white text-sm">Loading map data...</p>
         </div>
       </div>
     );
@@ -238,7 +255,6 @@ export default function MapComponent() {
             color="primary"
             onClick={() => {
               setError(null);
-              setMapReady(false);
               fetchDeviceLocations();
             }}
             className="mt-2"
@@ -251,28 +267,63 @@ export default function MapComponent() {
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" style={{ minHeight: 400 }}>
       <div
-        ref={mapRef}
-        className="w-full h-full rounded-lg"
         style={{
-          minHeight: "400px",
-          position: "relative",
-          backgroundColor: "#f0f0f0",
-          zIndex: 0,
+          height: "400px",
+          width: "100%",
+          borderRadius: "0.5rem",
+          overflow: "hidden",
         }}
-      />
-      {!mapReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50 rounded-lg z-10">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-2" />
-            <div className="text-white text-sm">Loading map tiles...</div>
-          </div>
-        </div>
-      )}
+      >
+        <Map
+          center={center}
+          zoom={zoom}
+          onBoundsChanged={({ center, zoom }) => {
+            setCenter(center);
+            setZoom(zoom);
+          }}
+          height={400}
+          dprs={[1, 2]} // Support for high DPI displays
+        >
+          {/* Device markers */}
+          {mapData?.devices.map((device) => {
+            const [lng, lat] = device.coordinates;
+            if (isNaN(lat) || isNaN(lng)) return null;
+
+            return (
+              <Marker
+                key={device.id}
+                anchor={[lat, lng]}
+                payload={device}
+                onClick={() => handleMarkerClick(device)}
+              >
+                <CustomMarker
+                  status={device.status}
+                  onClick={() => handleMarkerClick(device)}
+                  device={device}
+                />
+              </Marker>
+            );
+          })}
+
+          {/* Popup overlay */}
+          {selectedDevice && (
+            <Overlay
+              anchor={[
+                selectedDevice.coordinates[1],
+                selectedDevice.coordinates[0],
+              ]}
+              offset={[0, -10]}
+            >
+              <DevicePopup device={selectedDevice} onClose={handlePopupClose} />
+            </Overlay>
+          )}
+        </Map>
+      </div>
 
       {/* Top-right devices count & refresh */}
-      <div className="absolute top-2 right-2 z-[1000]">
+      <div className="absolute top-4 right-4 z-[1000]">
         <Card className="bg-slate-900/90 backdrop-blur-sm border border-slate-700">
           <CardBody className="p-3 flex items-center justify-between text-white text-sm">
             <div className="flex items-center space-x-2">
@@ -287,29 +338,44 @@ export default function MapComponent() {
       </div>
 
       {/* Bottom-left status summary */}
-      <div className="absolute bottom-2 left-2 z-[1000]">
+      <div className="absolute bottom-4 left-4 z-[1000]">
         <Card className="bg-slate-900/90 backdrop-blur-sm border border-slate-700">
           <CardBody className="p-3 flex space-x-4 text-sm text-white">
             <div className="flex items-center space-x-1">
               <MdCheckCircle className="text-green-400" />
               <span>
-                {mapData.devices.filter((d) => d.status === "ONLINE").length}
+                {mapData?.devices.filter((d) => d.status === "ONLINE").length ||
+                  0}
               </span>
             </div>
             <div className="flex items-center space-x-1">
               <MdWarning className="text-yellow-400" />
               <span>
-                {mapData.devices.filter((d) => d.status === "OFFLINE").length}
+                {mapData?.devices.filter((d) => d.status === "OFFLINE")
+                  .length || 0}
               </span>
             </div>
             <div className="flex items-center space-x-1">
               <MdError className="text-red-400" />
               <span>
-                {mapData.devices.filter((d) => d.status === "FAULT").length}
+                {mapData?.devices.filter((d) => d.status === "FAULT").length ||
+                  0}
               </span>
             </div>
           </CardBody>
         </Card>
+      </div>
+
+      {/* Fit to devices button */}
+      <div className="absolute bottom-4 right-4 z-[1000]">
+        <Button
+          size="sm"
+          color="primary"
+          onClick={fitToDevices}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          Fit All
+        </Button>
       </div>
     </div>
   );

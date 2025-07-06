@@ -6,7 +6,14 @@ import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/modal";
+import { Checkbox } from "@heroui/checkbox";
 import { useState, useEffect } from "react";
+
+// Add group interface
+interface Group {
+  id: string;
+  name: string;
+}
 
 interface Schedule {
   id: string;
@@ -31,25 +38,40 @@ interface Device {
 }
 
 export default function SchedulesPage() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [devices, setDevices] = useState<Device[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<any | null>(null);
   const [filterDevice, setFilterDevice] = useState<string>("all");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
   const [filterMode, setFilterMode] = useState<string>("all");
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Form state for new schedule
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     deviceId: "",
+    groupId: "",
+    name: "",
+    description: "",
     startTime: "",
     endTime: "",
-    mode: "AUTO" as "AUTO" | "MANUAL" | "TWILIGHT"
+    mode: "AUTO",
+    type: "DAILY",
+    daysOfWeek: [],
+    isActive: true,
+    isHoliday: false,
+    holidayName: ""
   });
+  // Edit form state
+  const [editData, setEditData] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     fetchSchedules();
     fetchDevices();
+    fetchGroups();
     const interval = setInterval(fetchSchedules, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -61,25 +83,29 @@ export default function SchedulesPage() {
       setSchedules(data.schedules || []);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching schedules:", error);
       setLoading(false);
     }
   };
-
   const fetchDevices = async () => {
     try {
       const response = await fetch("/api/devices");
       const data = await response.json();
       setDevices(data.devices || []);
-    } catch (error) {
-      console.error("Error fetching devices:", error);
-    }
+    } catch (error) {}
+  };
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch("/api/devices/groups");
+      const data = await response.json();
+      setGroups(data.groups || []);
+    } catch (error) {}
   };
 
   const filteredSchedules = schedules.filter(schedule => {
     const matchesDevice = filterDevice === "all" || schedule.deviceId === filterDevice;
+    const matchesGroup = filterGroup === "all" || schedule.groupId === filterGroup;
     const matchesMode = filterMode === "all" || schedule.mode === filterMode;
-    return matchesDevice && matchesMode;
+    return matchesDevice && matchesGroup && matchesMode;
   });
 
   const getModeColor = (mode: string) => {
@@ -110,29 +136,34 @@ export default function SchedulesPage() {
 
   const handleCreateSchedule = async () => {
     try {
+      const payload = { ...formData };
+      // Only send one of deviceId or groupId
+      if (!payload.deviceId) delete payload.deviceId;
+      if (!payload.groupId) delete payload.groupId;
       const response = await fetch("/api/schedules/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-
       if (response.ok) {
         await fetchSchedules();
         onClose();
         setFormData({
           deviceId: "",
+          groupId: "",
+          name: "",
+          description: "",
           startTime: "",
           endTime: "",
-          mode: "AUTO"
+          mode: "AUTO",
+          type: "DAILY",
+          daysOfWeek: [],
+          isActive: true,
+          isHoliday: false,
+          holidayName: ""
         });
-      } else {
-        console.error("Failed to create schedule");
       }
-    } catch (error) {
-      console.error("Error creating schedule:", error);
-    }
+    } catch (error) {}
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
@@ -151,6 +182,26 @@ export default function SchedulesPage() {
     } catch (error) {
       console.error("Error deleting schedule:", error);
     }
+  };
+
+  const handleEditSchedule = async () => {
+    if (!editData) return;
+    setIsEditing(true);
+    try {
+      const payload = { ...editData };
+      if (!payload.deviceId) delete payload.deviceId;
+      if (!payload.groupId) delete payload.groupId;
+      const response = await fetch(`/api/schedules/${editData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) {
+        await fetchSchedules();
+        setIsEditModalOpen(false);
+        setEditData(null);
+      }
+    } catch (error) {} finally { setIsEditing(false); }
   };
 
   const isScheduleActive = (schedule: Schedule) => {
@@ -232,6 +283,17 @@ export default function SchedulesPage() {
               ))}
             </Select>
             <Select
+              placeholder="Filter by group"
+              selectedKeys={[filterGroup]}
+              onSelectionChange={(keys) => setFilterGroup(Array.from(keys)[0] as string)}
+              className="bg-slate-800/50 border-slate-600"
+            >
+              <SelectItem key="all">All Groups</SelectItem>
+              {groups.map(group => (
+                <SelectItem key={group.id}>{group.name}</SelectItem>
+              ))}
+            </Select>
+            <Select
               placeholder="Filter by mode"
               selectedKeys={[filterMode]}
               onSelectionChange={(keys) => setFilterMode(Array.from(keys)[0] as string)}
@@ -267,8 +329,8 @@ export default function SchedulesPage() {
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">{schedule.device.deviceId}</h3>
-                  <p className="text-sm text-slate-400">{schedule.device.location.address}</p>
+                  <h3 className="text-lg font-semibold text-white">{schedule.name || schedule.device.deviceId}</h3>
+                  <p className="text-sm text-slate-400">{schedule.description || schedule.device.location.address}</p>
                 </div>
                 <Chip
                   color={getModeColor(schedule.mode)}
@@ -317,7 +379,14 @@ export default function SchedulesPage() {
                     color="primary" 
                     variant="flat" 
                     className="flex-1"
-                    onClick={() => setSelectedSchedule(schedule)}
+                    onClick={() => {
+                      setEditData({
+                        ...schedule,
+                        startTime: new Date(schedule.startTime).toISOString().slice(0, 16),
+                        endTime: new Date(schedule.endTime).toISOString().slice(0, 16)
+                      });
+                      setIsEditModalOpen(true);
+                    }}
                   >
                     Edit
                   </Button>
@@ -362,6 +431,33 @@ export default function SchedulesPage() {
                   <SelectItem key={device.id}>{device.deviceId}</SelectItem>
                 ))}
               </Select>
+              <Select
+                label="Group"
+                placeholder="Select a group"
+                selectedKeys={formData.groupId ? [formData.groupId] : []}
+                onSelectionChange={(keys) => setFormData({...formData, groupId: Array.from(keys)[0] as string})}
+                className="bg-slate-800/50 border-slate-600"
+              >
+                {groups.map(group => (
+                  <SelectItem key={group.id}>{group.name}</SelectItem>
+                ))}
+              </Select>
+              
+              <Input
+                label="Name"
+                placeholder="Schedule name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="bg-slate-800/50 border-slate-600"
+              />
+              
+              <Input
+                label="Description"
+                placeholder="Schedule description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="bg-slate-800/50 border-slate-600"
+              />
               
               <Input
                 label="Start Time"
@@ -397,6 +493,90 @@ export default function SchedulesPage() {
             </Button>
             <Button color="primary" onPress={handleCreateSchedule}>
               Create Schedule
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Schedule Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} size="lg">
+        <ModalContent className="bg-slate-900 border border-slate-700">
+          <ModalHeader className="text-white">Edit Schedule</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Select
+                label="Device"
+                placeholder="Select a device"
+                selectedKeys={editData?.deviceId ? [editData.deviceId] : []}
+                onSelectionChange={(keys) => setEditData({...editData, deviceId: Array.from(keys)[0] as string})}
+                className="bg-slate-800/50 border-slate-600"
+              >
+                {devices.map(device => (
+                  <SelectItem key={device.id}>{device.deviceId}</SelectItem>
+                ))}
+              </Select>
+              <Select
+                label="Group"
+                placeholder="Select a group"
+                selectedKeys={editData?.groupId ? [editData.groupId] : []}
+                onSelectionChange={(keys) => setEditData({...editData, groupId: Array.from(keys)[0] as string})}
+                className="bg-slate-800/50 border-slate-600"
+              >
+                {groups.map(group => (
+                  <SelectItem key={group.id}>{group.name}</SelectItem>
+                ))}
+              </Select>
+              
+              <Input
+                label="Name"
+                placeholder="Schedule name"
+                value={editData?.name}
+                onChange={(e) => setEditData({...editData, name: e.target.value})}
+                className="bg-slate-800/50 border-slate-600"
+              />
+              
+              <Input
+                label="Description"
+                placeholder="Schedule description"
+                value={editData?.description}
+                onChange={(e) => setEditData({...editData, description: e.target.value})}
+                className="bg-slate-800/50 border-slate-600"
+              />
+              
+              <Input
+                label="Start Time"
+                type="datetime-local"
+                value={editData?.startTime}
+                onChange={(e) => setEditData({...editData, startTime: e.target.value})}
+                className="bg-slate-800/50 border-slate-600"
+              />
+              
+              <Input
+                label="End Time"
+                type="datetime-local"
+                value={editData?.endTime}
+                onChange={(e) => setEditData({...editData, endTime: e.target.value})}
+                className="bg-slate-800/50 border-slate-600"
+              />
+              
+              <Select
+                label="Mode"
+                selectedKeys={[editData?.mode]}
+                onSelectionChange={(keys) => setEditData({...editData, mode: Array.from(keys)[0] as "AUTO" | "MANUAL" | "TWILIGHT"})}
+                className="bg-slate-800/50 border-slate-600"
+              >
+                <SelectItem key="AUTO">Auto</SelectItem>
+                <SelectItem key="MANUAL">Manual</SelectItem>
+                <SelectItem key="TWILIGHT">Twilight</SelectItem>
+              </Select>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="danger" variant="light" onPress={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button color="primary" onPress={handleEditSchedule} isLoading={isEditing}>
+              Save Changes
             </Button>
           </ModalFooter>
         </ModalContent>
