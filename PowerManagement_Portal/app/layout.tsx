@@ -8,6 +8,7 @@ import { Providers } from "./providers";
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
+import { ChatbotLauncher } from "@/components/chatbot-launcher";
 
 export const metadata: Metadata = {
   title: {
@@ -55,6 +56,7 @@ export default function RootLayout({
             {children}
 
             <footer className="w-full flex items-center justify-center "></footer>
+            <ChatbotLauncher />
           </div>
         </Providers>
       </body>

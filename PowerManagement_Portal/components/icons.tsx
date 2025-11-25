@@ -124,6 +124,27 @@ export const SearchIcon = (props: IconSvgProps) => (
   </svg>
 );
 
+export const HelpCircleIcon = ({
+  size = 24,
+  width,
+  height,
+  ...props
+}: IconSvgProps) => (
+  <svg
+    aria-hidden="true"
+    focusable="false"
+    height={size || height}
+    width={size || width}
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-8.2v-.6c0-.973.457-1.57 1.248-2.091.149-.097.296-.193.44-.294.55-.386.812-.764.812-1.315 0-.984-.731-1.6-1.717-1.6-.974 0-1.643.577-1.785 1.416-.087.507-.516.844-1.03.844-.673 0-1.137-.61-1.022-1.272.27-1.576 1.675-2.788 3.535-2.788 1.982 0 3.738 1.27 3.738 3.35 0 1.215-.51 2.014-1.484 2.631-.157.1-.314.2-.47.305-.428.29-.565.49-.565.814v.6c0 .607-.492 1.1-1.1 1.1-.607 0-1.1-.493-1.1-1.1zm0 4.2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
 // Removed DiscordIcon, TwitterIcon, HeartFilledIcon as they are not core to CCMS.
 // If specific CCMS-related icons are needed (e.g., for "panel", "schedule", "power"),
 // they would need to be defined here with their respective SVG paths.

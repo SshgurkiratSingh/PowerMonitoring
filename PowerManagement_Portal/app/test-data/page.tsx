@@ -5,10 +5,8 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
-import { SudoModal } from "@/components/sudo-modal";
 
 export default function TestDataPage() {
-  const [showSudoModal, setShowSudoModal] = useState(false);
   const [formData, setFormData] = useState({
     deviceCount: "1",
     powerRating: "20",
@@ -20,32 +18,30 @@ export default function TestDataPage() {
     },
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowSudoModal(true);
-  };
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/test-data/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
-  const handleSudoConfirm = async (success: boolean) => {
-    if (success) {
-      try {
-        const response = await fetch("/api/test-data/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        });
-
-        if (response.ok) {
-          // Handle success
-          alert("Test data generated successfully!");
-        } else {
-          throw new Error("Failed to generate test data");
-        }
-      } catch (error) {
-        console.error("Error generating test data:", error);
-        alert("Failed to generate test data");
+      if (response.ok) {
+        alert("Test data generated successfully!");
+      } else {
+        throw new Error("Failed to generate test data");
       }
+    } catch (error) {
+      console.error("Error generating test data:", error);
+      alert("Failed to generate test data");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -94,19 +90,22 @@ export default function TestDataPage() {
             <div>
               <Select
                 label="Device Status"
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
+                selectedKeys={[formData.status]}
+                onSelectionChange={(keys) => {
+                  const [status] = Array.from(keys);
+                  if (typeof status === "string") {
+                    setFormData({ ...formData, status });
+                  }
+                }}
                 className="text-white"
                 classNames={{
                   label: "text-slate-400",
                   trigger: "bg-slate-800/50 border-slate-700",
                 }}
               >
-                <SelectItem value="ONLINE">Online</SelectItem>
-                <SelectItem value="OFFLINE">Offline</SelectItem>
-                <SelectItem value="FAULT">Fault</SelectItem>
+                <SelectItem key="ONLINE">Online</SelectItem>
+                <SelectItem key="OFFLINE">Offline</SelectItem>
+                <SelectItem key="FAULT">Fault</SelectItem>
               </Select>
             </div>
 
@@ -170,19 +169,14 @@ export default function TestDataPage() {
             <Button
               type="submit"
               color="primary"
-              className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white"
+              className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white disabled:opacity-60"
+              isDisabled={isSubmitting}
             >
-              Generate Test Data
+              {isSubmitting ? "Generating..." : "Generate Test Data"}
             </Button>
           </form>
         </CardBody>
       </Card>
-
-      <SudoModal
-        isOpen={showSudoModal}
-        onClose={() => setShowSudoModal(false)}
-        onConfirm={handleSudoConfirm}
-      />
     </div>
   );
 }
