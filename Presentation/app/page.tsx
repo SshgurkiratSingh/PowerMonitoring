@@ -459,10 +459,6 @@ export default function Home() {
               When you send a command, watch it travel Frontend → Backend → MQTT
               Broker → Panel with millisecond timings.
             </p>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto mt-4">
-              Animated paths display acknowledgments coming back across the LoRa
-              mesh so you can prove responsiveness in live demos.
-            </p>
           </motion.div>
 
           <CommandPropagationVisualizer inView={commandSection.inView} />

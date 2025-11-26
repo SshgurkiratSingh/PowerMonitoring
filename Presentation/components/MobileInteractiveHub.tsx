@@ -536,9 +536,7 @@ const MobileInteractiveHub = () => {
 
         <div className="mt-6 relative h-40 rounded-3xl border border-white/5 bg-slate-900/70 overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-28 h-28 rounded-full border border-purple-400/50 flex items-center justify-center text-center px-4">
-              <p className="text-sm text-gray-200">Orbiting alert beacons</p>
-            </div>
+            <div className="w-28 h-28 rounded-full border border-purple-400/50 flex items-center justify-center text-center px-4"></div>
           </div>
           {[0, 120, 240].map((angle) => (
             <div

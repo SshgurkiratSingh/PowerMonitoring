@@ -198,10 +198,6 @@ const CommandPropagationVisualizer = ({
               }}
             ></div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Animated marker replays every few seconds so stakeholders can watch
-            live hops.
-          </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4">
             {COMMAND_STAGES.map((stage, idx) => {
@@ -253,10 +249,6 @@ const CommandPropagationVisualizer = ({
               }}
             ></div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Acknowledgment bubble travels back only after the panel executes the
-            action, mirroring LoRa hop timings.
-          </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4">
             {ACK_STAGES.map((stage, idx) => {
