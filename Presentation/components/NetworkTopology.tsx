@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 interface NetworkTopologyProps {
   inView: boolean;
@@ -14,7 +14,7 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
     if (!inView || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -25,7 +25,13 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
     const height = canvas.offsetHeight;
 
     // Central gateway
-    const gateway = { x: width / 2, y: height / 2, radius: 50, label: 'Gateway', color: '#8b5cf6' };
+    const gateway = {
+      x: width / 2,
+      y: height / 2,
+      radius: 50,
+      label: "Gateway",
+      color: "#8b5cf6",
+    };
 
     // Edge devices in a circle
     const devices: Array<{
@@ -39,7 +45,7 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
     }> = [];
     const deviceCount = 12;
     const radius = Math.min(width, height) * 0.35;
-    
+
     for (let i = 0; i < deviceCount; i++) {
       const angle = (i / deviceCount) * Math.PI * 2;
       devices.push({
@@ -47,9 +53,9 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
         y: gateway.y + Math.sin(angle) * radius,
         radius: 25,
         label: `ESP32-${i + 1}`,
-        color: i % 2 === 0 ? '#06b6d4' : '#10b981',
+        color: i % 2 === 0 ? "#06b6d4" : "#10b981",
         angle: angle,
-        status: Math.random() > 0.2 ? 'active' : 'standby'
+        status: Math.random() > 0.2 ? "active" : "standby",
       });
     }
 
@@ -62,7 +68,13 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
       color: string;
       size: number;
 
-      constructor(startX: number, startY: number, targetX: number, targetY: number, color: string) {
+      constructor(
+        startX: number,
+        startY: number,
+        targetX: number,
+        targetY: number,
+        color: string
+      ) {
         this.x = startX;
         this.y = startY;
         this.targetX = targetX;
@@ -102,10 +114,18 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
     }
 
     const packets: NetworkPacket[] = [];
-    devices.forEach(device => {
-      if (device.status === 'active') {
+    devices.forEach((device) => {
+      if (device.status === "active") {
         for (let i = 0; i < 2; i++) {
-          packets.push(new NetworkPacket(device.x, device.y, gateway.x, gateway.y, device.color));
+          packets.push(
+            new NetworkPacket(
+              device.x,
+              device.y,
+              gateway.x,
+              gateway.y,
+              device.color
+            )
+          );
         }
       }
     });
@@ -126,11 +146,18 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
       ctx.fill();
 
       // Main node
-      const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius);
-      gradient.addColorStop(0, '#ffffff');
+      const gradient = ctx.createRadialGradient(
+        node.x,
+        node.y,
+        0,
+        node.x,
+        node.y,
+        node.radius
+      );
+      gradient.addColorStop(0, "#ffffff");
       gradient.addColorStop(0.5, node.color);
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
-      
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+
       ctx.globalAlpha = 1;
       ctx.fillStyle = gradient;
       ctx.shadowBlur = 30;
@@ -140,7 +167,7 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
 
       // Inner ring
       ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2;
       ctx.shadowBlur = 10;
       ctx.beginPath();
@@ -149,41 +176,54 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
 
       // Status indicator
       if (!isGateway) {
-        const statusColor = node.status === 'active' ? '#10b981' : '#6b7280';
+        const statusColor = node.status === "active" ? "#10b981" : "#6b7280";
         ctx.globalAlpha = 1;
         ctx.fillStyle = statusColor;
         ctx.shadowBlur = 10;
         ctx.shadowColor = statusColor;
         ctx.beginPath();
-        ctx.arc(node.x + node.radius - 8, node.y - node.radius + 8, 5, 0, Math.PI * 2);
+        ctx.arc(
+          node.x + node.radius - 8,
+          node.y - node.radius + 8,
+          5,
+          0,
+          Math.PI * 2
+        );
         ctx.fill();
       }
 
       // Label
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 5;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.font = isGateway ? 'bold 18px SF Pro Display, Inter, Arial' : 'bold 13px SF Pro Display, Inter, Arial';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+      ctx.font = isGateway
+        ? "bold 18px SF Pro Display, Inter, Arial"
+        : "bold 13px SF Pro Display, Inter, Arial";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(node.label, node.x, node.y);
       ctx.shadowBlur = 0;
     };
 
     const drawConnections = (time: number) => {
       devices.forEach((device, idx) => {
-        const gradient = ctx.createLinearGradient(device.x, device.y, gateway.x, gateway.y);
+        const gradient = ctx.createLinearGradient(
+          device.x,
+          device.y,
+          gateway.x,
+          gateway.y
+        );
         gradient.addColorStop(0, device.color);
         gradient.addColorStop(1, gateway.color);
 
         ctx.strokeStyle = gradient;
-        ctx.lineWidth = device.status === 'active' ? 3 : 1.5;
-        ctx.globalAlpha = device.status === 'active' ? 0.5 : 0.2;
-        ctx.shadowBlur = device.status === 'active' ? 20 : 5;
+        ctx.lineWidth = device.status === "active" ? 3 : 1.5;
+        ctx.globalAlpha = device.status === "active" ? 0.5 : 0.2;
+        ctx.shadowBlur = device.status === "active" ? 20 : 5;
         ctx.shadowColor = device.color;
-        ctx.setLineDash(device.status === 'active' ? [8, 4] : [10, 10]);
-        ctx.lineDashOffset = device.status === 'active' ? -time / 30 : 0;
+        ctx.setLineDash(device.status === "active" ? [8, 4] : [10, 10]);
+        ctx.lineDashOffset = device.status === "active" ? -time / 30 : 0;
 
         ctx.beginPath();
         ctx.moveTo(device.x, device.y);
@@ -204,11 +244,11 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < radius * 0.75) {
-            ctx.strokeStyle = '#3b82f6';
+            ctx.strokeStyle = "#3b82f6";
             ctx.lineWidth = 1.5;
             ctx.globalAlpha = 0.15;
             ctx.shadowBlur = 10;
-            ctx.shadowColor = '#3b82f6';
+            ctx.shadowColor = "#3b82f6";
             ctx.beginPath();
             ctx.moveTo(devices[i].x, devices[i].y);
             ctx.lineTo(devices[j].x, devices[j].y);
@@ -221,18 +261,18 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
 
     const animate = () => {
       time += 16;
-      ctx.fillStyle = 'rgba(3, 7, 18, 0.15)';
+      ctx.fillStyle = "rgba(3, 7, 18, 0.15)";
       ctx.fillRect(0, 0, width, height);
 
       drawMeshConnections(time);
       drawConnections(time);
 
-      packets.forEach(packet => {
+      packets.forEach((packet) => {
         packet.update();
         packet.draw(ctx);
       });
 
-      devices.forEach(device => drawNode(device, time));
+      devices.forEach((device) => drawNode(device, time));
       drawNode(gateway, time, true);
 
       animationId = requestAnimationFrame(animate);
@@ -258,7 +298,9 @@ export default function NetworkTopology({ inView }: NetworkTopologyProps) {
         className="w-full h-[500px] rounded-2xl relative z-10"
       />
       <div className="mt-6 text-center text-gray-300 relative z-10">
-        <p className="text-lg font-medium">Mesh network topology with 12 ESP32 devices and central gateway</p>
+        <p className="text-lg font-medium">
+          Mesh network topology with 12 ESP32 devices and central gateway
+        </p>
       </div>
     </motion.div>
   );

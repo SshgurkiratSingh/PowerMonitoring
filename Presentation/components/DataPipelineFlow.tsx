@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 interface DataPipelineProps {
   inView: boolean;
@@ -14,7 +14,7 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
     if (!inView || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -25,12 +25,54 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
     const height = canvas.offsetHeight;
 
     const stages = [
-      { x: width * 0.15, y: height * 0.3, label: 'Collection', desc: 'Sensors', color: '#06b6d4', size: 60 },
-      { x: width * 0.35, y: height * 0.25, label: 'Processing', desc: 'ESP32', color: '#8b5cf6', size: 70 },
-      { x: width * 0.55, y: height * 0.35, label: 'Transmission', desc: 'GPRS/LoRa', color: '#f59e0b', size: 65 },
-      { x: width * 0.75, y: height * 0.28, label: 'Storage', desc: 'MongoDB', color: '#10b981', size: 70 },
-      { x: width * 0.85, y: height * 0.65, label: 'Analytics', desc: 'ML Engine', color: '#ec4899', size: 75 },
-      { x: width * 0.65, y: height * 0.7, label: 'Visualization', desc: 'Dashboard', color: '#3b82f6', size: 65 },
+      {
+        x: width * 0.15,
+        y: height * 0.3,
+        label: "Collection",
+        desc: "Sensors",
+        color: "#06b6d4",
+        size: 60,
+      },
+      {
+        x: width * 0.35,
+        y: height * 0.25,
+        label: "Processing",
+        desc: "ESP32",
+        color: "#8b5cf6",
+        size: 70,
+      },
+      {
+        x: width * 0.55,
+        y: height * 0.35,
+        label: "Transmission",
+        desc: "GPRS/LoRa",
+        color: "#f59e0b",
+        size: 65,
+      },
+      {
+        x: width * 0.75,
+        y: height * 0.28,
+        label: "Storage",
+        desc: "MongoDB",
+        color: "#10b981",
+        size: 70,
+      },
+      {
+        x: width * 0.85,
+        y: height * 0.65,
+        label: "Analytics",
+        desc: "ML Engine",
+        color: "#ec4899",
+        size: 75,
+      },
+      {
+        x: width * 0.65,
+        y: height * 0.7,
+        label: "Visualization",
+        desc: "Dashboard",
+        color: "#3b82f6",
+        size: 65,
+      },
     ];
 
     class DataStream {
@@ -88,7 +130,7 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
     }
 
     const streams: DataStream[] = [];
-    stages.forEach(stage => {
+    stages.forEach((stage) => {
       for (let i = 0; i < 15; i++) {
         streams.push(new DataStream(stage.x, stage.y, stage.color));
       }
@@ -110,11 +152,18 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
       ctx.fill();
 
       // Main circle
-      const gradient = ctx.createRadialGradient(stage.x, stage.y, 0, stage.x, stage.y, stage.size);
-      gradient.addColorStop(0, '#ffffff');
+      const gradient = ctx.createRadialGradient(
+        stage.x,
+        stage.y,
+        0,
+        stage.x,
+        stage.y,
+        stage.size
+      );
+      gradient.addColorStop(0, "#ffffff");
       gradient.addColorStop(0.4, stage.color);
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
-      
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
+
       ctx.globalAlpha = 1;
       ctx.fillStyle = gradient;
       ctx.shadowBlur = 40;
@@ -125,7 +174,7 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
 
       // Inner ring
       ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2;
       ctx.shadowBlur = 10;
       ctx.beginPath();
@@ -135,26 +184,36 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
       // Text
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
-      ctx.font = 'bold 18px SF Pro Display, Inter, Arial';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
+      ctx.font = "bold 18px SF Pro Display, Inter, Arial";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
       ctx.fillText(stage.label, stage.x, stage.y + 3);
 
-      ctx.font = '13px SF Pro Display, Inter, Arial';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = "13px SF Pro Display, Inter, Arial";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       ctx.fillText(stage.desc, stage.x, stage.y + 20);
     };
 
     const drawFlowLines = (time: number) => {
       const pairs = [
-        [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0]
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 4],
+        [4, 5],
+        [5, 0],
       ];
 
       pairs.forEach(([startIdx, endIdx], pairIdx) => {
         const start = stages[startIdx];
         const end = stages[endIdx];
 
-        const gradient = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
+        const gradient = ctx.createLinearGradient(
+          start.x,
+          start.y,
+          end.x,
+          end.y
+        );
         gradient.addColorStop(0, start.color);
         gradient.addColorStop(1, end.color);
 
@@ -168,12 +227,14 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
 
         ctx.beginPath();
         ctx.moveTo(start.x, start.y);
-        
+
         // Add curved path
-        const cpX = (start.x + end.x) / 2 + (Math.sin(time / 1000 + pairIdx) * 50);
-        const cpY = (start.y + end.y) / 2 + (Math.cos(time / 1000 + pairIdx) * 50);
+        const cpX =
+          (start.x + end.x) / 2 + Math.sin(time / 1000 + pairIdx) * 50;
+        const cpY =
+          (start.y + end.y) / 2 + Math.cos(time / 1000 + pairIdx) * 50;
         ctx.quadraticCurveTo(cpX, cpY, end.x, end.y);
-        
+
         ctx.stroke();
         ctx.setLineDash([]);
 
@@ -196,16 +257,16 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
 
     const animate = () => {
       time += 16;
-      ctx.fillStyle = 'rgba(3, 7, 18, 0.1)';
+      ctx.fillStyle = "rgba(3, 7, 18, 0.1)";
       ctx.fillRect(0, 0, width, height);
 
-      streams.forEach(stream => {
+      streams.forEach((stream) => {
         stream.update();
         stream.draw(ctx);
       });
 
       drawFlowLines(time);
-      stages.forEach(stage => drawStage(stage, time));
+      stages.forEach((stage) => drawStage(stage, time));
 
       animationId = requestAnimationFrame(animate);
     };
@@ -230,7 +291,9 @@ export default function DataPipelineFlow({ inView }: DataPipelineProps) {
         className="w-full h-[500px] rounded-2xl relative z-10"
       />
       <div className="mt-6 text-center text-gray-400 relative z-10">
-        <p className="text-lg">Complete data pipeline from collection to visualization</p>
+        <p className="text-lg">
+          Complete data pipeline from collection to visualization
+        </p>
       </div>
     </motion.div>
   );

@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { RefreshCw, Check, X, Clock, Server, Cpu, CheckCircle2 } from "lucide-react";
+import {
+  RefreshCw,
+  Check,
+  X,
+  Clock,
+  Server,
+  Cpu,
+  CheckCircle2,
+} from "lucide-react";
 
 interface SyncSchedulingProps {
   inView: boolean;
@@ -50,7 +58,8 @@ const SYNC_STEPS: SyncStep[] = [
   {
     id: "node1",
     title: "Node 1 handshake",
-    description: "North feeder compares hashes and downloads the updated slots.",
+    description:
+      "North feeder compares hashes and downloads the updated slots.",
     duration: 2200,
   },
   {
@@ -74,12 +83,16 @@ const STEP_TARGETS: Record<SyncStepId, NodeKey[]> = {
   verify: ["server", "node1", "node2"],
 };
 
-export default function SyncSchedulingVisualization({ inView }: SyncSchedulingProps) {
+export default function SyncSchedulingVisualization({
+  inView,
+}: SyncSchedulingProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'mismatch'>('synced');
-  const [serverSignature, setServerSignature] = useState('A7F3E2');
-  const [node1Signature, setNode1Signature] = useState('A7F3E2');
-  const [node2Signature, setNode2Signature] = useState('A7F3E2');
+  const [syncStatus, setSyncStatus] = useState<
+    "synced" | "syncing" | "mismatch"
+  >("synced");
+  const [serverSignature, setServerSignature] = useState("A7F3E2");
+  const [node1Signature, setNode1Signature] = useState("A7F3E2");
+  const [node2Signature, setNode2Signature] = useState("A7F3E2");
   const [lastSync, setLastSync] = useState(Date.now());
   const [currentStep, setCurrentStep] = useState<number>(SYNC_STEPS.length);
   const [activeSyncTargets, setActiveSyncTargets] = useState<NodeKey[]>([]);
@@ -94,21 +107,31 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
   const activeTargetsRef = useRef<NodeKey[]>(activeSyncTargets);
   const currentStepRef = useRef(currentStep);
 
-  const formatTimestamp = useCallback(() =>
-    new Date().toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }), []);
+  const formatTimestamp = useCallback(
+    () =>
+      new Date().toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    []
+  );
 
-  const appendLog = useCallback((entry: Omit<SyncLogEntry, 'timestamp'>) => {
-    setSyncLog(prev => [...prev.slice(-7), { timestamp: formatTimestamp(), ...entry }]);
-  }, [formatTimestamp]);
+  const appendLog = useCallback(
+    (entry: Omit<SyncLogEntry, "timestamp">) => {
+      setSyncLog((prev) => [
+        ...prev.slice(-7),
+        { timestamp: formatTimestamp(), ...entry },
+      ]);
+    },
+    [formatTimestamp]
+  );
 
-  const createLogId = () => Math.random().toString(36).substring(2, 9).toUpperCase();
+  const createLogId = () =>
+    Math.random().toString(36).substring(2, 9).toUpperCase();
 
   const clearSyncTimeouts = useCallback(() => {
-    syncTimeouts.current.forEach(id => window.clearTimeout(id));
+    syncTimeouts.current.forEach((id) => window.clearTimeout(id));
     syncTimeouts.current = [];
   }, []);
 
@@ -148,77 +171,80 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
   }, [currentStep]);
 
   const schedule: ScheduleEntry[] = [
-    { time: '06:00', action: 'ON', device: 'Pump 1' },
-    { time: '08:00', action: 'OFF', device: 'Pump 1' },
-    { time: '10:00', action: 'ON', device: 'Pump 2' },
-    { time: '14:00', action: 'ON', device: 'Lights' },
-    { time: '18:00', action: 'OFF', device: 'Pump 2' },
-    { time: '22:00', action: 'OFF', device: 'Lights' },
+    { time: "06:00", action: "ON", device: "Pump 1" },
+    { time: "08:00", action: "OFF", device: "Pump 1" },
+    { time: "10:00", action: "ON", device: "Pump 2" },
+    { time: "14:00", action: "ON", device: "Lights" },
+    { time: "18:00", action: "OFF", device: "Pump 2" },
+    { time: "22:00", action: "OFF", device: "Lights" },
   ];
 
-  const runSyncSequence = useCallback((nextSignature: string) => {
-    clearSyncTimeouts();
-    setSyncStatus('syncing');
-    setActiveSyncTargets(['server']);
-    setCurrentStep(0);
+  const runSyncSequence = useCallback(
+    (nextSignature: string) => {
+      clearSyncTimeouts();
+      setSyncStatus("syncing");
+      setActiveSyncTargets(["server"]);
+      setCurrentStep(0);
 
-    let elapsed = 0;
+      let elapsed = 0;
 
-    SYNC_STEPS.forEach((step, index) => {
-      const stepStart = elapsed;
-      const stepEnd = stepStart + step.duration;
+      SYNC_STEPS.forEach((step, index) => {
+        const stepStart = elapsed;
+        const stepEnd = stepStart + step.duration;
+
+        scheduleTimeout(() => {
+          setCurrentStep(index);
+          setActiveSyncTargets([...STEP_TARGETS[step.id]]);
+          appendLog({
+            id: createLogId(),
+            message: `${step.title} — ${step.description}`,
+          });
+        }, stepStart);
+
+        if (step.id === "node1") {
+          scheduleTimeout(() => {
+            setNode1Signature(nextSignature);
+            appendLog({
+              id: createLogId(),
+              message: `Node 1 committed signature #${nextSignature}`,
+            });
+          }, stepEnd - 350);
+        }
+
+        if (step.id === "node2") {
+          scheduleTimeout(() => {
+            setNode2Signature(nextSignature);
+            appendLog({
+              id: createLogId(),
+              message: `Node 2 committed signature #${nextSignature}`,
+            });
+          }, stepEnd - 350);
+        }
+
+        elapsed = stepEnd;
+      });
 
       scheduleTimeout(() => {
-        setCurrentStep(index);
-        setActiveSyncTargets([...STEP_TARGETS[step.id]]);
+        setSyncStatus("synced");
+        setActiveSyncTargets([]);
+        setCurrentStep(SYNC_STEPS.length);
+        setNode1Signature(nextSignature);
+        setNode2Signature(nextSignature);
+        setLastSync(Date.now());
         appendLog({
           id: createLogId(),
-          message: `${step.title} — ${step.description}`,
+          message: `Network validation complete. All nodes on #${nextSignature}`,
         });
-      }, stepStart);
-
-      if (step.id === 'node1') {
-        scheduleTimeout(() => {
-          setNode1Signature(nextSignature);
-          appendLog({
-            id: createLogId(),
-            message: `Node 1 committed signature #${nextSignature}`,
-          });
-        }, stepEnd - 350);
-      }
-
-      if (step.id === 'node2') {
-        scheduleTimeout(() => {
-          setNode2Signature(nextSignature);
-          appendLog({
-            id: createLogId(),
-            message: `Node 2 committed signature #${nextSignature}`,
-          });
-        }, stepEnd - 350);
-      }
-
-      elapsed = stepEnd;
-    });
-
-    scheduleTimeout(() => {
-      setSyncStatus('synced');
-      setActiveSyncTargets([]);
-      setCurrentStep(SYNC_STEPS.length);
-      setNode1Signature(nextSignature);
-      setNode2Signature(nextSignature);
-      setLastSync(Date.now());
-      appendLog({
-        id: createLogId(),
-        message: `Network validation complete. All nodes on #${nextSignature}`,
-      });
-    }, elapsed + 300);
-  }, [appendLog, clearSyncTimeouts, scheduleTimeout]);
+      }, elapsed + 300);
+    },
+    [appendLog, clearSyncTimeouts, scheduleTimeout]
+  );
 
   const updateSchedule = useCallback(() => {
     const nextSignature = generateSignature();
     clearSyncTimeouts();
     setServerSignature(nextSignature);
-    setSyncStatus('mismatch');
+    setSyncStatus("mismatch");
     setActiveSyncTargets([]);
     setCurrentStep(SYNC_STEPS.length);
     setSyncLog([
@@ -230,7 +256,13 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
     ]);
 
     scheduleTimeout(() => runSyncSequence(nextSignature), 900);
-  }, [clearSyncTimeouts, formatTimestamp, generateSignature, runSyncSequence, scheduleTimeout]);
+  }, [
+    clearSyncTimeouts,
+    formatTimestamp,
+    generateSignature,
+    runSyncSequence,
+    scheduleTimeout,
+  ]);
 
   useEffect(() => {
     return () => clearSyncTimeouts();
@@ -252,7 +284,7 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
     if (!inView || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -263,9 +295,30 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
     const height = canvas.offsetHeight;
 
     const nodes: Record<NodeKey, CanvasNode> = {
-      server: { x: width * 0.5, y: height * 0.15, label: 'Server', color: '#3b82f6', signature: signaturesRef.current.server, key: 'server' },
-      node1: { x: width * 0.25, y: height * 0.6, label: 'Node 1', color: '#10b981', signature: signaturesRef.current.node1, key: 'node1' },
-      node2: { x: width * 0.75, y: height * 0.6, label: 'Node 2', color: '#8b5cf6', signature: signaturesRef.current.node2, key: 'node2' },
+      server: {
+        x: width * 0.5,
+        y: height * 0.15,
+        label: "Server",
+        color: "#3b82f6",
+        signature: signaturesRef.current.server,
+        key: "server",
+      },
+      node1: {
+        x: width * 0.25,
+        y: height * 0.6,
+        label: "Node 1",
+        color: "#10b981",
+        signature: signaturesRef.current.node1,
+        key: "node1",
+      },
+      node2: {
+        x: width * 0.75,
+        y: height * 0.6,
+        label: "Node 2",
+        color: "#8b5cf6",
+        signature: signaturesRef.current.node2,
+        key: "node2",
+      },
     };
 
     const refreshNodeSignatures = () => {
@@ -282,9 +335,16 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
       targetY: number;
       progress: number;
       color: string;
-      type: 'check' | 'sync';
-      
-      constructor(fromX: number, fromY: number, toX: number, toY: number, color: string, type: 'check' | 'sync') {
+      type: "check" | "sync";
+
+      constructor(
+        fromX: number,
+        fromY: number,
+        toX: number,
+        toY: number,
+        color: string,
+        type: "check" | "sync"
+      ) {
         this.x = fromX;
         this.y = fromY;
         this.targetX = toX;
@@ -303,10 +363,10 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
       draw(ctx: CanvasRenderingContext2D) {
         ctx.globalAlpha = 0.25 + (1 - this.progress) * 0.75;
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = this.type === 'sync' ? 25 : 15;
+        ctx.shadowBlur = this.type === "sync" ? 25 : 15;
         ctx.shadowColor = this.color;
-        
-        if (this.type === 'check') {
+
+        if (this.type === "check") {
           // Draw check packet as small circle
           ctx.beginPath();
           ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
@@ -316,7 +376,7 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
           ctx.beginPath();
           ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
           ctx.fill();
-          
+
           ctx.strokeStyle = this.color;
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -337,23 +397,32 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
     let animationId: number;
 
     const drawNode = (node: CanvasNode, time: number, isActive: boolean) => {
-      const isServer = node.key === 'server';
-      const pulse = Math.sin(time / (isActive ? 450 : 900)) * (isActive ? 9 : 5);
+      const isServer = node.key === "server";
+      const pulse =
+        Math.sin(time / (isActive ? 450 : 900)) * (isActive ? 9 : 5);
       const radius = isServer ? 47 : 36;
-      const sigMatch = node.key === 'server' ? true : node.signature === serverSignature;
+      const serverSig = signaturesRef.current.server;
+      const sigMatch = node.key === "server" ? true : node.signature === serverSig;
 
       ctx.globalAlpha = isActive ? 0.45 : 0.25;
-      ctx.fillStyle = sigMatch ? node.color : '#ef4444';
+      ctx.fillStyle = sigMatch ? node.color : "#ef4444";
       ctx.shadowBlur = isActive ? 60 : 40;
-      ctx.shadowColor = sigMatch ? node.color : '#ef4444';
+      ctx.shadowColor = sigMatch ? node.color : "#ef4444";
       ctx.beginPath();
       ctx.arc(node.x, node.y, radius + 22 + pulse, 0, Math.PI * 2);
       ctx.fill();
 
-      const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, radius);
-      gradient.addColorStop(0, '#ffffff');
-      gradient.addColorStop(0.45, sigMatch ? node.color : '#ef4444');
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+      const gradient = ctx.createRadialGradient(
+        node.x,
+        node.y,
+        0,
+        node.x,
+        node.y,
+        radius
+      );
+      gradient.addColorStop(0, "#ffffff");
+      gradient.addColorStop(0.45, sigMatch ? node.color : "#ef4444");
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
 
       ctx.globalAlpha = 1;
       ctx.fillStyle = gradient;
@@ -364,7 +433,7 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
 
       if (isActive) {
         ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = '#22d3ee';
+        ctx.strokeStyle = "#22d3ee";
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 6]);
         ctx.beginPath();
@@ -373,7 +442,7 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
         ctx.setLineDash([]);
       }
 
-      const statusColor = sigMatch ? '#10b981' : '#ef4444';
+      const statusColor = sigMatch ? "#10b981" : "#ef4444";
       ctx.fillStyle = statusColor;
       ctx.shadowBlur = 15;
       ctx.shadowColor = statusColor;
@@ -383,15 +452,17 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
 
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 5;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.font = isServer ? 'bold 18px SF Pro Display, Inter, Arial' : 'bold 16px SF Pro Display, Inter, Arial';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+      ctx.font = isServer
+        ? "bold 18px SF Pro Display, Inter, Arial"
+        : "bold 16px SF Pro Display, Inter, Arial";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(node.label, node.x, node.y - 8);
 
-      ctx.font = '13px Courier New, monospace';
-      ctx.fillStyle = sigMatch ? '#10b981' : '#ef4444';
+      ctx.font = "13px Courier New, monospace";
+      ctx.fillStyle = sigMatch ? "#10b981" : "#ef4444";
       ctx.shadowBlur = 3;
       ctx.fillText(`#${node.signature}`, node.x, node.y + 12);
 
@@ -400,12 +471,17 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
 
     const drawConnections = (time: number, activeTargets: NodeKey[]) => {
       const connections = [
-        { from: nodes.server, to: nodes.node1, key: 'node1' as NodeKey },
-        { from: nodes.server, to: nodes.node2, key: 'node2' as NodeKey },
+        { from: nodes.server, to: nodes.node1, key: "node1" as NodeKey },
+        { from: nodes.server, to: nodes.node2, key: "node2" as NodeKey },
       ];
 
-      connections.forEach(conn => {
-        const gradient = ctx.createLinearGradient(conn.from.x, conn.from.y, conn.to.x, conn.to.y);
+      connections.forEach((conn) => {
+        const gradient = ctx.createLinearGradient(
+          conn.from.x,
+          conn.from.y,
+          conn.to.x,
+          conn.to.y
+        );
         gradient.addColorStop(0, conn.from.color);
         gradient.addColorStop(1, conn.to.color);
 
@@ -430,7 +506,7 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
 
     const animate = () => {
       time += 16;
-      ctx.fillStyle = 'rgba(3, 7, 18, 0.22)';
+      ctx.fillStyle = "rgba(3, 7, 18, 0.22)";
       ctx.fillRect(0, 0, width, height);
 
       refreshNodeSignatures();
@@ -438,16 +514,21 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
       const status = syncStatusRef.current;
       const activeTargets = activeTargetsRef.current;
       const currentStepIndex = currentStepRef.current;
-      const activeStepId = currentStepIndex < SYNC_STEPS.length ? SYNC_STEPS[currentStepIndex].id : null;
+      const activeStepId =
+        currentStepIndex < SYNC_STEPS.length
+          ? SYNC_STEPS[currentStepIndex].id
+          : null;
 
       checkTimer++;
-      const spawnInterval = status === 'syncing' ? 70 : 110;
+      const spawnInterval = status === "syncing" ? 70 : 110;
       if (checkTimer > spawnInterval) {
         checkTimer = 0;
 
-        const hasActiveTargets = activeTargets.some(target => target === 'node1' || target === 'node2');
-        if (status === 'syncing' && hasActiveTargets) {
-          (['node1', 'node2'] as NodeKey[]).forEach(target => {
+        const hasActiveTargets = activeTargets.some(
+          (target) => target === "node1" || target === "node2"
+        );
+        if (status === "syncing" && hasActiveTargets) {
+          (["node1", "node2"] as NodeKey[]).forEach((target) => {
             if (activeTargets.includes(target)) {
               packets.push(
                 new SyncPacket(
@@ -455,20 +536,56 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
                   nodes.server.y,
                   nodes[target].x,
                   nodes[target].y,
-                  '#38bdf8',
-                  'sync'
+                  "#38bdf8",
+                  "sync"
                 )
               );
             }
           });
         } else {
-          packets.push(new SyncPacket(nodes.node1.x, nodes.node1.y, nodes.server.x, nodes.server.y, '#10b981', 'check'));
-          packets.push(new SyncPacket(nodes.node2.x, nodes.node2.y, nodes.server.x, nodes.server.y, '#8b5cf6', 'check'));
+          packets.push(
+            new SyncPacket(
+              nodes.node1.x,
+              nodes.node1.y,
+              nodes.server.x,
+              nodes.server.y,
+              "#10b981",
+              "check"
+            )
+          );
+          packets.push(
+            new SyncPacket(
+              nodes.node2.x,
+              nodes.node2.y,
+              nodes.server.x,
+              nodes.server.y,
+              "#8b5cf6",
+              "check"
+            )
+          );
         }
 
-        if (activeStepId === 'verify') {
-          packets.push(new SyncPacket(nodes.node1.x, nodes.node1.y, nodes.server.x, nodes.server.y, '#22c55e', 'check'));
-          packets.push(new SyncPacket(nodes.node2.x, nodes.node2.y, nodes.server.x, nodes.server.y, '#a855f7', 'check'));
+        if (activeStepId === "verify") {
+          packets.push(
+            new SyncPacket(
+              nodes.node1.x,
+              nodes.node1.y,
+              nodes.server.x,
+              nodes.server.y,
+              "#22c55e",
+              "check"
+            )
+          );
+          packets.push(
+            new SyncPacket(
+              nodes.node2.x,
+              nodes.node2.y,
+              nodes.server.x,
+              nodes.server.y,
+              "#a855f7",
+              "check"
+            )
+          );
         }
       }
 
@@ -478,13 +595,13 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
       for (let i = packets.length - 1; i >= 0; i--) {
         packets[i].update();
         packets[i].draw(ctx);
-        
+
         if (packets[i].isComplete()) {
           packets.splice(i, 1);
         }
       }
 
-      (Object.values(nodes) as CanvasNode[]).forEach(node =>
+      (Object.values(nodes) as CanvasNode[]).forEach((node) =>
         drawNode(node, time, activeTargets.includes(node.key))
       );
 
@@ -507,25 +624,41 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
         className="relative w-full card-glass rounded-3xl p-8 overflow-hidden border border-cyan-500/20"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-blue-500/5 to-purple-500/5"></div>
-        
+
         {/* Status Banner */}
         <div className="absolute top-4 right-4 z-20">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-            syncStatus === 'synced' ? 'bg-green-500/20 border border-green-500/50' :
-            syncStatus === 'syncing' ? 'bg-yellow-500/20 border border-yellow-500/50' :
-            'bg-red-500/20 border border-red-500/50'
-          }`}>
-            {syncStatus === 'synced' && <Check className="w-4 h-4 text-green-400" />}
-            {syncStatus === 'syncing' && <RefreshCw className="w-4 h-4 text-yellow-400 animate-spin" />}
-            {syncStatus === 'mismatch' && <X className="w-4 h-4 text-red-400" />}
-            <span className={`text-sm font-medium ${
-              syncStatus === 'synced' ? 'text-green-300' :
-              syncStatus === 'syncing' ? 'text-yellow-300' :
-              'text-red-300'
-            }`}>
-              {syncStatus === 'synced' ? 'Synchronized' :
-               syncStatus === 'syncing' ? 'Syncing...' :
-               'Signature Mismatch'}
+          <div
+            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+              syncStatus === "synced"
+                ? "bg-green-500/20 border border-green-500/50"
+                : syncStatus === "syncing"
+                ? "bg-yellow-500/20 border border-yellow-500/50"
+                : "bg-red-500/20 border border-red-500/50"
+            }`}
+          >
+            {syncStatus === "synced" && (
+              <Check className="w-4 h-4 text-green-400" />
+            )}
+            {syncStatus === "syncing" && (
+              <RefreshCw className="w-4 h-4 text-yellow-400 animate-spin" />
+            )}
+            {syncStatus === "mismatch" && (
+              <X className="w-4 h-4 text-red-400" />
+            )}
+            <span
+              className={`text-sm font-medium ${
+                syncStatus === "synced"
+                  ? "text-green-300"
+                  : syncStatus === "syncing"
+                  ? "text-yellow-300"
+                  : "text-red-300"
+              }`}
+            >
+              {syncStatus === "synced"
+                ? "Synchronized"
+                : syncStatus === "syncing"
+                ? "Syncing..."
+                : "Signature Mismatch"}
             </span>
           </div>
         </div>
@@ -535,8 +668,13 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
           className="w-full h-[400px] rounded-2xl relative z-10"
         />
         <div className="mt-6 text-center text-gray-300 relative z-10">
-          <p className="text-lg font-medium">Signature-Based Schedule Synchronization</p>
-          <p className="text-sm text-gray-400 mt-2">Server maintains master schedule • Nodes verify signature hash • Auto-sync on mismatch</p>
+          <p className="text-lg font-medium">
+            Signature-Based Schedule Synchronization
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            Server maintains master schedule • Nodes verify signature hash •
+            Auto-sync on mismatch
+          </p>
         </div>
       </motion.div>
 
@@ -553,8 +691,12 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
             <div className="flex items-center gap-3">
               <Server className="w-8 h-8 text-blue-400" />
               <div>
-                <h4 className="text-xl font-bold text-white">Server Schedule</h4>
-                <p className="text-sm text-gray-400">Signature: #{serverSignature}</p>
+                <h4 className="text-xl font-bold text-white">
+                  Server Schedule
+                </h4>
+                <p className="text-sm text-gray-400">
+                  Signature: #{serverSignature}
+                </p>
               </div>
             </div>
             <button
@@ -574,23 +716,29 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + idx * 0.05 }}
                 className={`flex items-center justify-between p-3 rounded-lg ${
-                  entry.action === 'ON' 
-                    ? 'bg-green-500/10 border border-green-500/30' 
-                    : 'bg-red-500/10 border border-red-500/30'
+                  entry.action === "ON"
+                    ? "bg-green-500/10 border border-green-500/30"
+                    : "bg-red-500/10 border border-red-500/30"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Clock className={`w-5 h-5 ${entry.action === 'ON' ? 'text-green-400' : 'text-red-400'}`} />
+                  <Clock
+                    className={`w-5 h-5 ${
+                      entry.action === "ON" ? "text-green-400" : "text-red-400"
+                    }`}
+                  />
                   <div>
                     <p className="text-white font-medium">{entry.time}</p>
                     <p className="text-sm text-gray-400">{entry.device}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                  entry.action === 'ON' 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-red-500 text-white'
-                }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-bold ${
+                    entry.action === "ON"
+                      ? "bg-green-500 text-white"
+                      : "bg-red-500 text-white"
+                  }`}
+                >
                   {entry.action}
                 </span>
               </motion.div>
@@ -611,24 +759,36 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
               <div className="flex items-center gap-3">
                 <Cpu className="w-8 h-8 text-green-400" />
                 <div>
-                  <h4 className="text-xl font-bold text-white">Node 1 Status</h4>
-                  <p className="text-sm text-gray-400">Signature: #{node1Signature}</p>
+                  <h4 className="text-xl font-bold text-white">
+                    Node 1 Status
+                  </h4>
+                  <p className="text-sm text-gray-400">
+                    Signature: #{node1Signature}
+                  </p>
                 </div>
               </div>
-              <div className={`w-3 h-3 rounded-full ${
-                node1Signature === serverSignature ? 'bg-green-400' : 'bg-red-400'
-              } animate-pulse`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  node1Signature === serverSignature
+                    ? "bg-green-400"
+                    : "bg-red-400"
+                } animate-pulse`}
+              ></div>
             </div>
             <div className="flex items-center gap-2">
               {node1Signature === serverSignature ? (
                 <>
                   <Check className="w-5 h-5 text-green-400" />
-                  <span className="text-green-300 font-medium">Schedule Synced</span>
+                  <span className="text-green-300 font-medium">
+                    Schedule Synced
+                  </span>
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-5 h-5 text-yellow-400 animate-spin" />
-                  <span className="text-yellow-300 font-medium">Syncing...</span>
+                  <span className="text-yellow-300 font-medium">
+                    Syncing...
+                  </span>
                 </>
               )}
             </div>
@@ -643,24 +803,36 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
               <div className="flex items-center gap-3">
                 <Cpu className="w-8 h-8 text-purple-400" />
                 <div>
-                  <h4 className="text-xl font-bold text-white">Node 2 Status</h4>
-                  <p className="text-sm text-gray-400">Signature: #{node2Signature}</p>
+                  <h4 className="text-xl font-bold text-white">
+                    Node 2 Status
+                  </h4>
+                  <p className="text-sm text-gray-400">
+                    Signature: #{node2Signature}
+                  </p>
                 </div>
               </div>
-              <div className={`w-3 h-3 rounded-full ${
-                node2Signature === serverSignature ? 'bg-green-400' : 'bg-red-400'
-              } animate-pulse`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  node2Signature === serverSignature
+                    ? "bg-green-400"
+                    : "bg-red-400"
+                } animate-pulse`}
+              ></div>
             </div>
             <div className="flex items-center gap-2">
               {node2Signature === serverSignature ? (
                 <>
                   <Check className="w-5 h-5 text-green-400" />
-                  <span className="text-green-300 font-medium">Schedule Synced</span>
+                  <span className="text-green-300 font-medium">
+                    Schedule Synced
+                  </span>
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-5 h-5 text-yellow-400 animate-spin" />
-                  <span className="text-yellow-300 font-medium">Syncing...</span>
+                  <span className="text-yellow-300 font-medium">
+                    Syncing...
+                  </span>
                 </>
               )}
             </div>
@@ -671,7 +843,9 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
 
           {/* Info Box */}
           <div className="card-glass rounded-2xl p-4 border border-cyan-500/20">
-            <h5 className="text-sm font-bold text-cyan-400 mb-2">How It Works</h5>
+            <h5 className="text-sm font-bold text-cyan-400 mb-2">
+              How It Works
+            </h5>
             <ul className="text-xs text-gray-400 space-y-1">
               <li>• Server generates unique signature for schedule</li>
               <li>• Nodes periodically check signature hash</li>
@@ -690,9 +864,13 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-xl font-bold text-white">Sync Timeline</h4>
-              <p className="text-sm text-gray-400">Line-by-line verification steps</p>
+              <p className="text-sm text-gray-400">
+                Line-by-line verification steps
+              </p>
             </div>
-            <span className="text-xs text-gray-400">Last sync {new Date(lastSync).toLocaleTimeString()}</span>
+            <span className="text-xs text-gray-400">
+              Last sync {new Date(lastSync).toLocaleTimeString()}
+            </span>
           </div>
 
           <div className="space-y-3">
@@ -704,25 +882,41 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
                   key={step.id}
                   className={`rounded-2xl border px-4 py-3 transition-all ${
                     isActive
-                      ? 'border-cyan-500/60 bg-cyan-500/5 shadow-[0_0_25px_rgba(6,182,212,0.25)]'
+                      ? "border-cyan-500/60 bg-cyan-500/5 shadow-[0_0_25px_rgba(6,182,212,0.25)]"
                       : isComplete
-                        ? 'border-green-500/40 bg-green-500/5'
-                        : 'border-white/5 bg-white/0'
+                      ? "border-green-500/40 bg-green-500/5"
+                      : "border-white/5 bg-white/0"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     {isComplete ? (
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
                     ) : (
-                      <RefreshCw className={`w-5 h-5 ${isActive ? 'text-cyan-300 animate-spin' : 'text-gray-500'}`} />
+                      <RefreshCw
+                        className={`w-5 h-5 ${
+                          isActive
+                            ? "text-cyan-300 animate-spin"
+                            : "text-gray-500"
+                        }`}
+                      />
                     )}
                     <div>
-                      <p className="text-sm font-semibold text-white">{step.title}</p>
-                      <p className="text-xs text-gray-400">{step.description}</p>
+                      <p className="text-sm font-semibold text-white">
+                        {step.title}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {step.description}
+                      </p>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
-                    <span>{isActive ? 'Running now' : isComplete ? 'Completed' : 'Queued'}</span>
+                    <span>
+                      {isActive
+                        ? "Running now"
+                        : isComplete
+                        ? "Completed"
+                        : "Queued"}
+                    </span>
                     <span>{(step.duration / 1000).toFixed(1)}s window</span>
                   </div>
                 </div>
@@ -731,15 +925,26 @@ export default function SyncSchedulingVisualization({ inView }: SyncSchedulingPr
           </div>
 
           <div className="mt-6">
-            <h5 className="text-sm font-semibold text-cyan-300 mb-3">Live log</h5>
+            <h5 className="text-sm font-semibold text-cyan-300 mb-3">
+              Live log
+            </h5>
             <div className="bg-slate-900/50 border border-cyan-500/20 rounded-2xl p-4 space-y-2 h-48 overflow-y-auto">
               {syncLog.length === 0 ? (
-                <p className="text-xs text-gray-500">Awaiting sync activity...</p>
+                <p className="text-xs text-gray-500">
+                  Awaiting sync activity...
+                </p>
               ) : (
-                syncLog.map(entry => (
-                  <div key={`${entry.id}-${entry.timestamp}`} className="flex items-start justify-between gap-3">
-                    <p className="text-xs text-gray-300 leading-snug">{entry.message}</p>
-                    <span className="text-[10px] text-gray-500 whitespace-nowrap">{entry.timestamp}</span>
+                syncLog.map((entry) => (
+                  <div
+                    key={`${entry.id}-${entry.timestamp}`}
+                    className="flex items-start justify-between gap-3"
+                  >
+                    <p className="text-xs text-gray-300 leading-snug">
+                      {entry.message}
+                    </p>
+                    <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                      {entry.timestamp}
+                    </span>
                   </div>
                 ))
               )}

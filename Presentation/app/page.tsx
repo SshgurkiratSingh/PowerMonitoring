@@ -304,7 +304,6 @@ export default function Home() {
           </motion.div>
 
           <Premium3DArchitecture inView={archInView} />
-
         </div>
       </motion.section>
 
@@ -325,7 +324,8 @@ export default function Home() {
               Real-Time Energy Intelligence
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
-              Live energy flow animation plus interactive 3D globe with every CCMS panel location
+              Live energy flow animation plus interactive 3D globe with every
+              CCMS panel location
             </p>
           </motion.div>
           <GlobalPanelMap inView={networkInView} />
@@ -333,7 +333,10 @@ export default function Home() {
       </motion.section>
 
       {/* Data Pipeline Section */}
-      <motion.section ref={pipelineRef} className="relative py-32 px-8 bg-gradient-to-b from-transparent via-pink-950/10 to-transparent">
+      <motion.section
+        ref={pipelineRef}
+        className="relative py-32 px-8 bg-gradient-to-b from-transparent via-pink-950/10 to-transparent"
+      >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
@@ -374,7 +377,8 @@ export default function Home() {
               GPRS/GSM + LoRa Communication
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
-              Hybrid communication for street light panels with 48hr backup power
+              Hybrid communication for street light panels with 48hr backup
+              power
             </p>
           </motion.div>
 
@@ -393,13 +397,16 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-3 px-6 py-3 mb-6 rounded-full card-glass border border-cyan-500/30">
               <Clock className="w-5 h-5 text-cyan-400" />
-              <span className="text-cyan-300 font-medium">Schedule Integrity</span>
+              <span className="text-cyan-300 font-medium">
+                Schedule Integrity
+              </span>
             </div>
             <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 mb-6">
               Signature-Based Schedule Sync
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
-              Unique signature matching keeps remote street light ON/OFF schedules aligned across server and field nodes
+              Unique signature matching keeps remote street light ON/OFF
+              schedules aligned across server and field nodes
             </p>
           </motion.div>
 
@@ -408,7 +415,10 @@ export default function Home() {
       </motion.section>
 
       {/* Redundancy Section */}
-      <motion.section ref={redundancyRef} className="relative py-32 px-8 bg-gradient-to-b from-transparent via-green-950/10 to-transparent">
+      <motion.section
+        ref={redundancyRef}
+        className="relative py-32 px-8 bg-gradient-to-b from-transparent via-green-950/10 to-transparent"
+      >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}

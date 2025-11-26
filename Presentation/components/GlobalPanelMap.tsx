@@ -143,21 +143,24 @@ const INDIA_PATH =
 
 const projectToMap = (lat: number, lon: number) => {
   const x =
-    ((lon - INDIA_BOUNDS.minLon) / (INDIA_BOUNDS.maxLon - INDIA_BOUNDS.minLon)) *
+    ((lon - INDIA_BOUNDS.minLon) /
+      (INDIA_BOUNDS.maxLon - INDIA_BOUNDS.minLon)) *
     MAP_WIDTH;
   const y =
     (1 -
-      (lat - INDIA_BOUNDS.minLat) / (INDIA_BOUNDS.maxLat - INDIA_BOUNDS.minLat)) *
+      (lat - INDIA_BOUNDS.minLat) /
+        (INDIA_BOUNDS.maxLat - INDIA_BOUNDS.minLat)) *
     MAP_HEIGHT;
   return { x, y };
 };
 
 const buildArcPath = (
   start: { x: number; y: number },
-  end: { x: number; y: number },
+  end: { x: number; y: number }
 ) => {
   const cx = (start.x + end.x) / 2;
-  const cy = Math.min(start.y, end.y) - Math.max(40, Math.abs(start.x - end.x) * 0.2);
+  const cy =
+    Math.min(start.y, end.y) - Math.max(40, Math.abs(start.x - end.x) * 0.2);
   return `M${start.x},${start.y} Q${cx},${cy} ${end.x},${end.y}`;
 };
 
@@ -229,7 +232,7 @@ const EnergyFlowAnimation = ({ active }: { active: boolean }) => {
   const getControlPoint = (
     from: { x: number; y: number },
     to: { x: number; y: number },
-    height: number,
+    height: number
   ) => ({
     x: (from.x + to.x) / 2,
     y: Math.min(from.y, to.y) - height * 0.15,
@@ -239,7 +242,7 @@ const EnergyFlowAnimation = ({ active }: { active: boolean }) => {
     t: number,
     p0: { x: number; y: number },
     p1: { x: number; y: number },
-    p2: { x: number; y: number },
+    p2: { x: number; y: number }
   ) => {
     const inv = 1 - t;
     const x = inv * inv * p0.x + 2 * inv * t * p1.x + t * t * p2.x;
@@ -247,85 +250,106 @@ const EnergyFlowAnimation = ({ active }: { active: boolean }) => {
     return { x, y };
   };
 
-  const draw = useCallback(
-    (timestamp: number) => {
-      if (!canvasRef.current) return;
-      const ctx = canvasRef.current.getContext("2d");
-      if (!ctx) return;
+  const draw = useCallback((timestamp: number) => {
+    if (!canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
 
-      const { width, height } = sizeRef.current;
-      if (!width || !height) return;
+    const { width, height } = sizeRef.current;
+    if (!width || !height) return;
 
-      ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height);
 
-      const nodeMap = ENERGY_NODES.map((node) => ({
-        ...node,
-        px: node.x * width,
-        py: node.y * height,
-      })).reduce<Record<string, { px: number; py: number; color: string; label: string; value: string }>>(
-        (acc, node) => {
-          acc[node.id] = node;
-          return acc;
-        },
-        {},
+    const nodeMap = ENERGY_NODES.map((node) => ({
+      ...node,
+      px: node.x * width,
+      py: node.y * height,
+    })).reduce<
+      Record<
+        string,
+        { px: number; py: number; color: string; label: string; value: string }
+      >
+    >((acc, node) => {
+      acc[node.id] = node;
+      return acc;
+    }, {});
+
+    ENERGY_CONNECTIONS.forEach((connection) => {
+      const from = nodeMap[connection.from];
+      const to = nodeMap[connection.to];
+      if (!from || !to) return;
+      const control = getControlPoint(
+        { x: from.px, y: from.py },
+        { x: to.px, y: to.py },
+        height
       );
+      ctx.strokeStyle = connection.color;
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = connection.color;
+      ctx.beginPath();
+      ctx.moveTo(from.px, from.py);
+      ctx.quadraticCurveTo(control.x, control.y, to.px, to.py);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    });
 
-      ENERGY_CONNECTIONS.forEach((connection) => {
-        const from = nodeMap[connection.from];
-        const to = nodeMap[connection.to];
-        if (!from || !to) return;
-        const control = getControlPoint(from, to, height);
-        ctx.strokeStyle = connection.color;
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = connection.color;
-        ctx.beginPath();
-        ctx.moveTo(from.px, from.py);
-        ctx.quadraticCurveTo(control.x, control.y, to.px, to.py);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      });
+    const delta =
+      ((timestamp - (lastTimeRef.current ?? timestamp)) / 1000) * 0.6;
+    pulsesRef.current.forEach((pulse) => {
+      pulse.progress += delta * pulse.speed;
+      if (pulse.progress > 1) pulse.progress = 0;
+      const from = nodeMap[pulse.from];
+      const to = nodeMap[pulse.to];
+      if (!from || !to) return;
+      const control = getControlPoint(
+        { x: from.px, y: from.py },
+        { x: to.px, y: to.py },
+        height
+      );
+      const { x, y } = getQuadraticPoint(
+        pulse.progress,
+        { x: from.px, y: from.py },
+        control,
+        { x: to.px, y: to.py }
+      );
+      ctx.fillStyle = pulse.color;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = pulse.color;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
 
-      const delta = ((timestamp - (lastTimeRef.current ?? timestamp)) / 1000) * 0.6;
-      pulsesRef.current.forEach((pulse) => {
-        pulse.progress += delta * pulse.speed;
-        if (pulse.progress > 1) pulse.progress = 0;
-        const from = nodeMap[pulse.from];
-        const to = nodeMap[pulse.to];
-        if (!from || !to) return;
-        const control = getControlPoint(from, to, height);
-        const { x, y } = getQuadraticPoint(pulse.progress, from, control, to);
-        ctx.fillStyle = pulse.color;
-        ctx.shadowBlur = 16;
-        ctx.shadowColor = pulse.color;
-        ctx.beginPath();
-        ctx.arc(x, y, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      });
+    Object.values(nodeMap).forEach((node) => {
+      ctx.fillStyle = "rgba(15,23,42,0.9)";
+      ctx.beginPath();
+      ctx.ellipse(
+        node.px,
+        node.py,
+        width * 0.08,
+        height * 0.08,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.strokeStyle = `${node.color}90`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "white";
+      ctx.font = "600 18px 'Space Grotesk'";
+      ctx.textAlign = "center";
+      ctx.fillText(node.label, node.px, node.py - 6);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "14px 'Space Grotesk'";
+      ctx.fillText(node.value, node.px, node.py + 18);
+    });
 
-      Object.values(nodeMap).forEach((node) => {
-        ctx.fillStyle = "rgba(15,23,42,0.9)";
-        ctx.beginPath();
-        ctx.ellipse(node.px, node.py, width * 0.08, height * 0.08, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = `${node.color}90`;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.fillStyle = "white";
-        ctx.font = "600 18px 'Space Grotesk'";
-        ctx.textAlign = "center";
-        ctx.fillText(node.label, node.px, node.py - 6);
-        ctx.fillStyle = "#94a3b8";
-        ctx.font = "14px 'Space Grotesk'";
-        ctx.fillText(node.value, node.px, node.py + 18);
-      });
-
-      lastTimeRef.current = timestamp;
-      animationRef.current = requestAnimationFrame(draw);
-    },
-    [],
-  );
+    lastTimeRef.current = timestamp;
+    animationRef.current = requestAnimationFrame(draw);
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -367,9 +391,15 @@ const EnergyFlowAnimation = ({ active }: { active: boolean }) => {
 };
 
 const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
-  const [selectedPanel, setSelectedPanel] = useState<PanelLocation>(PANEL_LOCATIONS[0]);
+  const [selectedPanel, setSelectedPanel] = useState<PanelLocation>(
+    PANEL_LOCATIONS[0]
+  );
   const [activePanelId, setActivePanelId] = useState(PANEL_LOCATIONS[0].id);
-  const [telemetry, setTelemetry] = useState({ load: 18.5, energy: 342, savings: 12.6 });
+  const [telemetry, setTelemetry] = useState({
+    load: 18.5,
+    energy: 342,
+    savings: 12.6,
+  });
 
   const projectedPanels = useMemo(
     () =>
@@ -377,17 +407,18 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
         ...panel,
         point: projectToMap(panel.lat, panel.lon),
       })),
-    [],
+    []
   );
 
   const controlCenterPoint = useMemo(
     () => projectToMap(CONTROL_CENTER.lat, CONTROL_CENTER.lon),
-    [],
+    []
   );
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const randomPanel = PANEL_LOCATIONS[Math.floor(Math.random() * PANEL_LOCATIONS.length)];
+      const randomPanel =
+        PANEL_LOCATIONS[Math.floor(Math.random() * PANEL_LOCATIONS.length)];
       setActivePanelId(randomPanel.id);
       setTelemetry((prev) => ({
         load: 18 + Math.random() * 2,
@@ -415,8 +446,12 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
         <div className="flex items-center gap-3 mb-6">
           <Activity className="w-6 h-6 text-cyan-400" />
           <div>
-            <p className="text-cyan-300 text-sm uppercase tracking-[0.4em]">Real-Time Energy Flow</p>
-            <h3 className="text-3xl font-bold text-white">Live Distribution Animation</h3>
+            <p className="text-cyan-300 text-sm uppercase tracking-[0.4em]">
+              Real-Time Energy Flow
+            </p>
+            <h3 className="text-3xl font-bold text-white">
+              Live Distribution Animation
+            </h3>
           </div>
         </div>
         <div className="relative h-[360px] rounded-3xl bg-slate-950/80 border border-white/5 overflow-hidden">
@@ -443,9 +478,16 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
               color: "from-emerald-500 to-green-500",
             },
           ].map((metric) => (
-            <div key={metric.label} className="rounded-2xl border border-white/5 p-4 bg-slate-900/60">
-              <span className="text-xs uppercase text-gray-400 tracking-widest">{metric.label}</span>
-              <p className="text-3xl font-bold text-white mt-2">{metric.value}</p>
+            <div
+              key={metric.label}
+              className="rounded-2xl border border-white/5 p-4 bg-slate-900/60"
+            >
+              <span className="text-xs uppercase text-gray-400 tracking-widest">
+                {metric.label}
+              </span>
+              <p className="text-3xl font-bold text-white mt-2">
+                {metric.value}
+              </p>
               <span
                 className={`inline-flex text-xs mt-3 px-3 py-1 rounded-full bg-gradient-to-r ${metric.color} text-white/90`}
               >
@@ -468,12 +510,17 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
             <p className="text-blue-300 text-sm uppercase tracking-[0.4em]">
               National Coverage Map
             </p>
-            <h3 className="text-3xl font-bold text-white">Panel Locations & Connectivity</h3>
+            <h3 className="text-3xl font-bold text-white">
+              Panel Locations & Connectivity
+            </h3>
           </div>
         </div>
 
         <div className="relative h-[420px] rounded-3xl overflow-hidden border border-white/5 bg-slate-950/80">
-          <svg viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} className="w-full h-full">
+          <svg
+            viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+            className="w-full h-full"
+          >
             <defs>
               <radialGradient id="mapGlow" cx="50%" cy="45%" r="70%">
                 <stop offset="0%" stopColor="#0f172a" stopOpacity="0.9" />
@@ -513,7 +560,13 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
             </g>
 
             <g transform="translate(-40,10) scale(1.2)">
-              <path d={INDIA_PATH} fill="url(#mapFill)" stroke="#38bdf8" strokeOpacity="0.35" strokeWidth={3} />
+              <path
+                d={INDIA_PATH}
+                fill="url(#mapFill)"
+                stroke="#38bdf8"
+                strokeOpacity="0.35"
+                strokeWidth={3}
+              />
             </g>
 
             {projectedPanels.map((panel) => {
@@ -521,7 +574,12 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
               const color = panel.type === "gprs" ? "#38bdf8" : "#a855f7";
               return (
                 <g key={`arc-${panel.id}`}>
-                  <path d={path} stroke={`${color}33`} strokeWidth={4} fill="none" />
+                  <path
+                    d={path}
+                    stroke={`${color}33`}
+                    strokeWidth={4}
+                    fill="none"
+                  />
                   <motion.path
                     d={path}
                     stroke={color}
@@ -530,19 +588,29 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
                     strokeDasharray="8 12"
                     fill="none"
                     animate={{ strokeDashoffset: [0, -120] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                   />
                 </g>
               );
             })}
 
-            <g transform={`translate(${controlCenterPoint.x}, ${controlCenterPoint.y})`}>
+            <g
+              transform={`translate(${controlCenterPoint.x}, ${controlCenterPoint.y})`}
+            >
               <circle r={10} fill="#fbbf24" stroke="#f59e0b" strokeWidth={3} />
               <text
                 y={-16}
                 textAnchor="middle"
                 fill="#fcd34d"
-                style={{ fontSize: "12px", fontWeight: 600, letterSpacing: "0.2em" }}
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  letterSpacing: "0.2em",
+                }}
               >
                 NOC
               </text>
@@ -550,7 +618,8 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
 
             {projectedPanels.map((panel) => {
               const color = panel.type === "gprs" ? "#38bdf8" : "#a855f7";
-              const isActive = panel.id === activePanelId || panel.id === selectedPanel.id;
+              const isActive =
+                panel.id === activePanelId || panel.id === selectedPanel.id;
               return (
                 <g
                   key={panel.id}
@@ -565,7 +634,11 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
                         fill={color}
                         fillOpacity={0.15}
                         animate={{ r: [16, 24], opacity: [0.6, 0] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+                        transition={{
+                          duration: 1.8,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                        }}
                       />
                       <text
                         y={-18}
@@ -577,7 +650,12 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
                       </text>
                     </>
                   )}
-                  <circle r={isActive ? 8 : 6} fill={color} stroke="#0f172a" strokeWidth={2} />
+                  <circle
+                    r={isActive ? 8 : 6}
+                    fill={color}
+                    stroke="#0f172a"
+                    strokeWidth={2}
+                  />
                 </g>
               );
             })}
@@ -596,8 +674,12 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
         <div className="mt-6 flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-sm uppercase text-gray-400 tracking-[0.3em]">Selected Panel</p>
-              <h4 className="text-2xl font-semibold text-white">{selectedPanel.name}</h4>
+              <p className="text-sm uppercase text-gray-400 tracking-[0.3em]">
+                Selected Panel
+              </p>
+              <h4 className="text-2xl font-semibold text-white">
+                {selectedPanel.name}
+              </h4>
               <p className="text-gray-400">{selectedPanel.city}</p>
             </div>
             <span
@@ -618,9 +700,16 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
               { label: "Current", value: `${selectedPanel.current} A` },
               { label: "Power Factor", value: selectedPanel.pf.toFixed(2) },
             ].map((item) => (
-              <div key={item.label} className="rounded-2xl border border-white/5 bg-slate-900/70 p-4">
-                <p className="text-xs uppercase text-gray-500 tracking-widest">{item.label}</p>
-                <p className="text-xl font-semibold text-white mt-2">{item.value}</p>
+              <div
+                key={item.label}
+                className="rounded-2xl border border-white/5 bg-slate-900/70 p-4"
+              >
+                <p className="text-xs uppercase text-gray-500 tracking-widest">
+                  {item.label}
+                </p>
+                <p className="text-xl font-semibold text-white mt-2">
+                  {item.value}
+                </p>
               </div>
             ))}
           </div>

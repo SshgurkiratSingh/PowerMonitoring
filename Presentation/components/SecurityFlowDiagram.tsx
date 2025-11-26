@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 interface SecurityFlowProps {
   inView: boolean;
@@ -14,7 +14,7 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
     if (!inView || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -25,11 +25,46 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
     const height = canvas.offsetHeight;
 
     const layers = [
-      { x: width * 0.1, y: height * 0.5, label: 'Device', sublabel: 'AES-256', color: '#ef4444', icon: '🔐' },
-      { x: width * 0.3, y: height * 0.5, label: 'TLS 1.3', sublabel: 'Transport', color: '#f59e0b', icon: '🛡️' },
-      { x: width * 0.5, y: height * 0.5, label: 'JWT', sublabel: 'Auth', color: '#10b981', icon: '🎫' },
-      { x: width * 0.7, y: height * 0.5, label: 'RBAC', sublabel: 'Access', color: '#3b82f6', icon: '👤' },
-      { x: width * 0.9, y: height * 0.5, label: 'Audit', sublabel: 'Logging', color: '#8b5cf6', icon: '📝' },
+      {
+        x: width * 0.1,
+        y: height * 0.5,
+        label: "Device",
+        sublabel: "AES-256",
+        color: "#ef4444",
+        icon: "🔐",
+      },
+      {
+        x: width * 0.3,
+        y: height * 0.5,
+        label: "TLS 1.3",
+        sublabel: "Transport",
+        color: "#f59e0b",
+        icon: "🛡️",
+      },
+      {
+        x: width * 0.5,
+        y: height * 0.5,
+        label: "JWT",
+        sublabel: "Auth",
+        color: "#10b981",
+        icon: "🎫",
+      },
+      {
+        x: width * 0.7,
+        y: height * 0.5,
+        label: "RBAC",
+        sublabel: "Access",
+        color: "#3b82f6",
+        icon: "👤",
+      },
+      {
+        x: width * 0.9,
+        y: height * 0.5,
+        label: "Audit",
+        sublabel: "Logging",
+        color: "#8b5cf6",
+        icon: "📝",
+      },
     ];
 
     class SecurityPacket {
@@ -41,7 +76,13 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
       progress: number;
       size: number;
 
-      constructor(startX: number, startY: number, endX: number, endY: number, color: string) {
+      constructor(
+        startX: number,
+        startY: number,
+        endX: number,
+        endY: number,
+        color: string
+      ) {
         this.x = startX;
         this.y = startY;
         this.targetX = endX;
@@ -69,20 +110,24 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
 
         // Lock icon effect
         ctx.globalAlpha = 0.6;
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('🔒', this.x, this.y + 5);
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("🔒", this.x, this.y + 5);
         ctx.shadowBlur = 0;
       }
     }
 
     const packets: SecurityPacket[] = [];
     for (let i = 0; i < layers.length - 1; i++) {
-      packets.push(new SecurityPacket(
-        layers[i].x, layers[i].y,
-        layers[i + 1].x, layers[i + 1].y,
-        layers[i].color
-      ));
+      packets.push(
+        new SecurityPacket(
+          layers[i].x,
+          layers[i].y,
+          layers[i + 1].x,
+          layers[i + 1].y,
+          layers[i].color
+        )
+      );
     }
 
     let time = 0;
@@ -101,9 +146,16 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
       ctx.fill();
 
       // Main circle
-      const gradient = ctx.createRadialGradient(layer.x, layer.y, 0, layer.x, layer.y, 40);
+      const gradient = ctx.createRadialGradient(
+        layer.x,
+        layer.y,
+        0,
+        layer.x,
+        layer.y,
+        40
+      );
       gradient.addColorStop(0, layer.color);
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = gradient;
       ctx.shadowBlur = 30;
@@ -114,18 +166,18 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
       // Icon
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
-      ctx.font = '24px Arial';
-      ctx.textAlign = 'center';
+      ctx.font = "24px Arial";
+      ctx.textAlign = "center";
       ctx.fillText(layer.icon, layer.x, layer.y + 8);
 
       // Label
-      ctx.font = 'bold 16px SF Pro Display, Inter, Arial';
-      ctx.fillStyle = '#ffffff';
+      ctx.font = "bold 16px SF Pro Display, Inter, Arial";
+      ctx.fillStyle = "#ffffff";
       ctx.fillText(layer.label, layer.x, layer.y - 60);
 
       // Sublabel
-      ctx.font = '12px SF Pro Display, Inter, Arial';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = "12px SF Pro Display, Inter, Arial";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
       ctx.fillText(layer.sublabel, layer.x, layer.y - 45);
     };
 
@@ -150,13 +202,13 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
 
     const animate = () => {
       time += 16;
-      ctx.fillStyle = 'rgba(3, 7, 18, 0.15)';
+      ctx.fillStyle = "rgba(3, 7, 18, 0.15)";
       ctx.fillRect(0, 0, width, height);
 
       drawConnections();
-      layers.forEach(layer => drawLayer(layer, time));
-      
-      packets.forEach(packet => {
+      layers.forEach((layer) => drawLayer(layer, time));
+
+      packets.forEach((packet) => {
         packet.update();
         packet.draw(ctx);
       });
@@ -184,7 +236,9 @@ export default function SecurityFlowDiagram({ inView }: SecurityFlowProps) {
         className="w-full h-[400px] rounded-2xl relative z-10"
       />
       <div className="mt-6 text-center text-gray-400 relative z-10">
-        <p className="text-lg">End-to-end security flow with multi-layer protection</p>
+        <p className="text-lg">
+          End-to-end security flow with multi-layer protection
+        </p>
       </div>
     </motion.div>
   );
