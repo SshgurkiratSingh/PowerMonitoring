@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Gamepad2, Smartphone } from "lucide-react";
+import { ArrowLeft, Signal, Smartphone } from "lucide-react";
 import MobileInteractiveHub from "@/components/MobileInteractiveHub";
 
 export default function MobilePlayground() {
@@ -31,11 +31,14 @@ export default function MobilePlayground() {
           className="rounded-4xl border border-cyan-500/20 bg-gradient-to-br from-slate-900/70 to-slate-900/40 p-8 text-center"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-sm text-cyan-200">
-            <Gamepad2 className="w-4 h-4" /> Playful Learning
+            <Signal className="w-4 h-4" /> Visualization Mode
           </div>
-          <h1 className="text-4xl font-black mt-6">Mobile Interactive Playground</h1>
+          <h1 className="text-4xl font-black mt-6">
+            Mobile Visualization Studio
+          </h1>
           <p className="text-gray-300 text-lg mt-4">
-            Designed for 12-inch tablets and phones — every mission is touch-first, low-latency, and shareable during demos.
+            Built for 12-inch tablets and phones — every module loops live
+            telemetry, timelines, and heatmaps for quick demos.
           </p>
         </motion.section>
 

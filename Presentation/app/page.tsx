@@ -272,7 +272,11 @@ export default function Home() {
       </motion.section>
 
       {/* Overview Section (continuing after hero) */}
-      <motion.section ref={overviewRef} id="overview" className="relative py-32 px-8">
+      <motion.section
+        ref={overviewRef}
+        id="overview"
+        className="relative py-32 px-8"
+      >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, x: -100 }}
@@ -524,16 +528,20 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-3 px-6 py-3 mb-6 rounded-full card-glass border border-cyan-500/30">
               <Signal className="w-5 h-5 text-cyan-400" />
-              <span className="text-cyan-300 font-medium">Live Command Flow</span>
+              <span className="text-cyan-300 font-medium">
+                Live Command Flow
+              </span>
             </div>
             <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-teal-400 mb-6">
               Command Propagation Visualizer
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
-              When you send a command, watch it travel Frontend → Backend → MQTT Broker → Panel with millisecond timings.
+              When you send a command, watch it travel Frontend → Backend → MQTT
+              Broker → Panel with millisecond timings.
             </p>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mt-4">
-              Animated paths display acknowledgments coming back across the LoRa mesh so you can prove responsiveness in live demos.
+              Animated paths display acknowledgments coming back across the LoRa
+              mesh so you can prove responsiveness in live demos.
             </p>
           </motion.div>
 

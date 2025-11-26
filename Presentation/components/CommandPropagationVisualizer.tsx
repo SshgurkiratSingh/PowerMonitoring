@@ -11,7 +11,7 @@ const COMMAND_STAGES = [
     id: "frontend",
     label: "Frontend",
     role: "React UI",
-    detail: "Operator issues dimming or switching command with validation",
+    detail: "Operator issues switching/control command with validation",
     latency: 80,
   },
   {
@@ -73,7 +73,9 @@ const GAP_AFTER_ACK = 450;
 
 const formatMs = (value: number) => `${Math.round(value)} ms`;
 
-const CommandPropagationVisualizer = ({ inView }: CommandPropagationVisualizerProps) => {
+const CommandPropagationVisualizer = ({
+  inView,
+}: CommandPropagationVisualizerProps) => {
   const commandDuration = useMemo(
     () => COMMAND_STAGES.reduce((sum, stage) => sum + stage.latency, 0),
     []
@@ -83,7 +85,8 @@ const CommandPropagationVisualizer = ({ inView }: CommandPropagationVisualizerPr
     []
   );
   const ackStart = commandDuration + GAP_BEFORE_ACK;
-  const totalDuration = commandDuration + GAP_BEFORE_ACK + ackDuration + GAP_AFTER_ACK;
+  const totalDuration =
+    commandDuration + GAP_BEFORE_ACK + ackDuration + GAP_AFTER_ACK;
 
   const [elapsed, setElapsed] = useState(0);
 
@@ -196,7 +199,8 @@ const CommandPropagationVisualizer = ({ inView }: CommandPropagationVisualizerPr
             ></div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Animated marker replays every few seconds so stakeholders can watch live hops.
+            Animated marker replays every few seconds so stakeholders can watch
+            live hops.
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4">
@@ -215,7 +219,9 @@ const CommandPropagationVisualizer = ({ inView }: CommandPropagationVisualizerPr
                     <span className="text-white font-semibold">
                       {idx + 1}. {stage.label}
                     </span>
-                    <span className="text-gray-400">{formatMs(stage.latency)}</span>
+                    <span className="text-gray-400">
+                      {formatMs(stage.latency)}
+                    </span>
                   </div>
                   <p className="text-xs text-gray-500 uppercase tracking-[0.2em] mt-1">
                     {stage.role}
@@ -248,7 +254,8 @@ const CommandPropagationVisualizer = ({ inView }: CommandPropagationVisualizerPr
             ></div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Acknowledgment bubble travels back only after the panel executes the action, mirroring LoRa hop timings.
+            Acknowledgment bubble travels back only after the panel executes the
+            action, mirroring LoRa hop timings.
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4">
@@ -267,7 +274,9 @@ const CommandPropagationVisualizer = ({ inView }: CommandPropagationVisualizerPr
                     <span className="text-white font-semibold">
                       {idx + 1}. {stage.label}
                     </span>
-                    <span className="text-gray-400">{formatMs(stage.latency)}</span>
+                    <span className="text-gray-400">
+                      {formatMs(stage.latency)}
+                    </span>
                   </div>
                   <p className="text-xs text-gray-500 uppercase tracking-[0.2em] mt-1">
                     {stage.role}
