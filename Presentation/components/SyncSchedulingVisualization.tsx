@@ -402,7 +402,8 @@ export default function SyncSchedulingVisualization({
         Math.sin(time / (isActive ? 450 : 900)) * (isActive ? 9 : 5);
       const radius = isServer ? 47 : 36;
       const serverSig = signaturesRef.current.server;
-      const sigMatch = node.key === "server" ? true : node.signature === serverSig;
+      const sigMatch =
+        node.key === "server" ? true : node.signature === serverSig;
 
       ctx.globalAlpha = isActive ? 0.45 : 0.25;
       ctx.fillStyle = sigMatch ? node.color : "#ef4444";

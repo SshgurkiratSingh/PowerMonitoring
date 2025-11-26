@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  DollarSign,
-  Shield,
-  Zap,
-  TrendingUp,
-  CheckCircle2,
-} from "lucide-react";
+import { Shield, TrendingUp, CheckCircle2 } from "lucide-react";
 
 interface BenefitsProps {
   inView: boolean;
@@ -19,19 +13,6 @@ export default function InteractiveBenefits({ inView }: BenefitsProps) {
 
   const benefits = [
     {
-      icon: DollarSign,
-      title: "Cost Reduction",
-      stat: "60%",
-      desc: "Dramatic reduction in operational expenses through remote management",
-      points: [
-        "Reduced travel costs",
-        "Lower manpower",
-        "Optimized consumption",
-      ],
-      color: "cyan",
-      gradient: "from-cyan-500 to-blue-500",
-    },
-    {
       icon: Shield,
       title: "Enhanced Reliability",
       stat: "99.9%",
@@ -39,19 +20,6 @@ export default function InteractiveBenefits({ inView }: BenefitsProps) {
       points: ["Automatic failover", "Self-healing network", "24/7 monitoring"],
       color: "green",
       gradient: "from-green-500 to-emerald-500",
-    },
-    {
-      icon: Zap,
-      title: "Energy Efficiency",
-      stat: "40%",
-      desc: "Significant energy savings through intelligent monitoring",
-      points: [
-        "Real-time tracking",
-        "Pattern analysis",
-        "Automated scheduling",
-      ],
-      color: "orange",
-      gradient: "from-orange-500 to-red-500",
     },
     {
       icon: TrendingUp,
@@ -66,7 +34,7 @@ export default function InteractiveBenefits({ inView }: BenefitsProps) {
 
   return (
     <div className="space-y-12">
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {benefits.map((benefit, idx) => (
           <motion.div
             key={idx}

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #030712;
+  --background: #000000;
   --foreground: #f8fafc;
   --primary: #06b6d4;
   --secondary: #8b5cf6;
@@ -20,8 +20,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   touch-action: manipulation;
   overflow-x: hidden;
-  background: radial-gradient(ellipse at top, #1e293b 0%, #030712 50%, #000000 100%);
-  background-attachment: fixed;
+  background-color: #000000;
 }
 
 /* Smooth scrolling */

@@ -416,6 +416,8 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
   );
 
   useEffect(() => {
+    if (!inView) return;
+
     const interval = setInterval(() => {
       const randomPanel =
         PANEL_LOCATIONS[Math.floor(Math.random() * PANEL_LOCATIONS.length)];
@@ -428,7 +430,7 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [inView]);
 
   useEffect(() => {
     if (!inView) return;
@@ -693,7 +695,7 @@ const GlobalPanelMap = ({ inView }: GlobalPanelMapProps) => {
             </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: "Lights On", value: selectedPanel.lightsOn },
               { label: "Voltage", value: `${selectedPanel.voltage} V` },

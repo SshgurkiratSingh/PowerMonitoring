@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { useInView } from "react-intersection-observer";
+import {
+  useInView,
+  type IntersectionOptions,
+} from "react-intersection-observer";
 import {
   Cpu,
   Wifi,
@@ -27,7 +31,6 @@ import {
   Sparkles,
   Clock,
 } from "lucide-react";
-import EnhancedBackground from "@/components/EnhancedBackground";
 import AdvancedDataFlow from "@/components/AdvancedDataFlow";
 import Premium3DArchitecture from "@/components/Premium3DArchitecture";
 import InteractiveBenefits from "@/components/InteractiveBenefits";
@@ -35,6 +38,24 @@ import DataPipelineFlow from "@/components/DataPipelineFlow";
 import SyncSchedulingVisualization from "@/components/SyncSchedulingVisualization";
 import RedundancyVisualization from "@/components/RedundancyVisualization";
 import GlobalPanelMap from "@/components/GlobalPanelMap";
+import CommandPropagationVisualizer from "@/components/CommandPropagationVisualizer";
+
+const useSectionVisibility = (options?: IntersectionOptions) => {
+  const [ref, inView] = useInView({
+    threshold: 0.2,
+    ...options,
+    triggerOnce: false,
+  });
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    if (inView && !hasAnimated) {
+      setHasAnimated(true);
+    }
+  }, [hasAnimated, inView]);
+
+  return { ref, inView, hasAnimated };
+};
 
 export default function Home() {
   const { scrollYProgress } = useScroll();
@@ -52,37 +73,99 @@ export default function Home() {
     threshold: 0.2,
     triggerOnce: true,
   });
-  const [archRef, archInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
-  const [commRef, commInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
-  const [benefitsRef, benefitsInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
-  const [pipelineRef, pipelineInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
-  const [networkRef, networkInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
-  const [syncRef, syncInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
-  const [redundancyRef, redundancyInView] = useInView({
-    threshold: 0.2,
-    triggerOnce: true,
-  });
+  const archSection = useSectionVisibility({ threshold: 0.2 });
+  const networkSection = useSectionVisibility({ threshold: 0.2 });
+  const pipelineSection = useSectionVisibility({ threshold: 0.2 });
+  const commSection = useSectionVisibility({ threshold: 0.2 });
+  const commandSection = useSectionVisibility({ threshold: 0.2 });
+  const syncSection = useSectionVisibility({ threshold: 0.2 });
+  const redundancySection = useSectionVisibility({ threshold: 0.2 });
+  const benefitsSection = useSectionVisibility({ threshold: 0.2 });
+  const autoScrollFrameRef = useRef<number | null>(null);
+  const autoScrollLastTimeRef = useRef<number | null>(null);
+  const inactivityTimerRef = useRef<number | null>(null);
 
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const AUTO_SCROLL_DELAY = 12000; // 12s of inactivity
+    const AUTO_SCROLL_SPEED = 0.8; // pixels per ms (~48px per second)
+
+    const stopAutoScroll = () => {
+      if (autoScrollFrameRef.current) {
+        window.cancelAnimationFrame(autoScrollFrameRef.current);
+        autoScrollFrameRef.current = null;
+        autoScrollLastTimeRef.current = null;
+      }
+    };
+
+    const autoScrollStep = (timestamp: number) => {
+      if (autoScrollLastTimeRef.current === null) {
+        autoScrollLastTimeRef.current = timestamp;
+      }
+      const delta = timestamp - autoScrollLastTimeRef.current;
+      autoScrollLastTimeRef.current = timestamp;
+
+      window.scrollBy(0, delta * (AUTO_SCROLL_SPEED / 16));
+
+      const doc = document.documentElement;
+      const reachedBottom =
+        window.innerHeight + window.scrollY >= doc.scrollHeight - 2;
+      if (reachedBottom) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      autoScrollFrameRef.current = window.requestAnimationFrame(autoScrollStep);
+    };
+
+    const startAutoScroll = () => {
+      if (autoScrollFrameRef.current) return;
+      autoScrollLastTimeRef.current = null;
+      autoScrollFrameRef.current = window.requestAnimationFrame(autoScrollStep);
+    };
+
+    const resetInactivityTimer = () => {
+      if (inactivityTimerRef.current) {
+        window.clearTimeout(inactivityTimerRef.current);
+      }
+      inactivityTimerRef.current = window.setTimeout(() => {
+        startAutoScroll();
+      }, AUTO_SCROLL_DELAY);
+    };
+
+    const handleUserActivity = () => {
+      stopAutoScroll();
+      resetInactivityTimer();
+    };
+
+    const events: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "mousedown",
+      "touchstart",
+      "wheel",
+      "keydown",
+    ];
+
+    events.forEach((event) =>
+      window.addEventListener(event, handleUserActivity, { passive: true })
+    );
+
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach((event) =>
+        window.removeEventListener(event, handleUserActivity)
+      );
+      if (inactivityTimerRef.current) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      stopAutoScroll();
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-gray-950 overflow-x-hidden">
@@ -91,8 +174,6 @@ export default function Home() {
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-orange-500 origin-left z-50"
         style={{ scaleX }}
       />
-
-      <EnhancedBackground />
 
       {/* Hero Section */}
       <motion.section
@@ -123,7 +204,7 @@ export default function Home() {
             </motion.div>
 
             <motion.h1
-              className="text-[10rem] md:text-[12rem] font-black mb-6 leading-none"
+              className="text-[4rem] sm:text-[6rem] lg:text-[8rem] xl:text-[10rem] font-black mb-6 leading-none"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 1.5, ease: [0.6, -0.05, 0.01, 0.99] }}
@@ -153,6 +234,21 @@ export default function Home() {
               animate={{ width: 256 }}
               transition={{ delay: 1.2, duration: 1.5 }}
             />
+
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="#overview"
+                className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-semibold shadow-lg shadow-cyan-500/30 text-center"
+              >
+                Explore Desktop Tour
+              </Link>
+              <Link
+                href="/mobile"
+                className="w-full sm:w-auto px-8 py-4 rounded-full border border-white/20 text-white font-semibold bg-white/5 backdrop-blur transition hover:bg-white/15 text-center"
+              >
+                Play Mobile Learning Mode
+              </Link>
+            </div>
           </motion.div>
 
           <motion.div
@@ -176,7 +272,7 @@ export default function Home() {
       </motion.section>
 
       {/* Overview Section (continuing after hero) */}
-      <motion.section ref={overviewRef} className="relative py-32 px-8">
+      <motion.section ref={overviewRef} id="overview" className="relative py-32 px-8">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, x: -100 }}
@@ -190,7 +286,7 @@ export default function Home() {
                 Comprehensive Solution
               </span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
               Core Features
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -198,7 +294,7 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {[
               {
                 icon: Activity,
@@ -281,13 +377,13 @@ export default function Home() {
 
       {/* Architecture Section */}
       <motion.section
-        ref={archRef}
+        ref={archSection.ref}
         className="relative py-32 px-8 bg-gradient-to-b from-transparent via-purple-950/10 to-transparent"
       >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
-            animate={archInView ? { opacity: 1, y: 0 } : {}}
+            animate={archSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
@@ -295,7 +391,7 @@ export default function Home() {
               <Server className="w-5 h-5 text-cyan-400" />
               <span className="text-cyan-300 font-medium">System Design</span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 mb-6">
               System Architecture
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -303,16 +399,16 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <Premium3DArchitecture inView={archInView} />
+          <Premium3DArchitecture inView={archSection.inView} />
         </div>
       </motion.section>
 
       {/* Global Coverage Section */}
-      <motion.section ref={networkRef} className="relative py-32 px-8">
+      <motion.section ref={networkSection.ref} className="relative py-32 px-8">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
-            animate={networkInView ? { opacity: 1, y: 0 } : {}}
+            animate={networkSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
@@ -320,7 +416,7 @@ export default function Home() {
               <Network className="w-5 h-5 text-blue-400" />
               <span className="text-blue-300 font-medium">Global Coverage</span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 mb-6">
               Real-Time Energy Intelligence
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -328,19 +424,19 @@ export default function Home() {
               CCMS panel location
             </p>
           </motion.div>
-          <GlobalPanelMap inView={networkInView} />
+          <GlobalPanelMap inView={networkSection.inView} />
         </div>
       </motion.section>
 
       {/* Data Pipeline Section */}
       <motion.section
-        ref={pipelineRef}
+        ref={pipelineSection.ref}
         className="relative py-32 px-8 bg-gradient-to-b from-transparent via-pink-950/10 to-transparent"
       >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
-            animate={pipelineInView ? { opacity: 1, y: 0 } : {}}
+            animate={pipelineSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
@@ -348,7 +444,7 @@ export default function Home() {
               <Database className="w-5 h-5 text-pink-400" />
               <span className="text-pink-300 font-medium">Data Flow</span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-6">
               Complete Data Pipeline
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -356,16 +452,16 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <DataPipelineFlow inView={pipelineInView} />
+          <DataPipelineFlow inView={pipelineSection.inView} />
         </div>
       </motion.section>
 
       {/* Communication Section */}
-      <motion.section ref={commRef} className="relative py-32 px-8">
+      <motion.section ref={commSection.ref} className="relative py-32 px-8">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, x: 100 }}
-            animate={commInView ? { opacity: 1, x: 0 } : {}}
+            animate={commSection.hasAnimated ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
@@ -373,7 +469,7 @@ export default function Home() {
               <Wifi className="w-5 h-5 text-green-400" />
               <span className="text-green-300 font-medium">Connectivity</span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-6">
               GPRS/GSM + LoRa Communication
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -382,16 +478,16 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <AdvancedDataFlow inView={commInView} />
+          <AdvancedDataFlow inView={commSection.inView} />
         </div>
       </motion.section>
 
       {/* Sync Scheduling Section */}
-      <motion.section ref={syncRef} className="relative py-32 px-8">
+      <motion.section ref={syncSection.ref} className="relative py-32 px-8">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
-            animate={syncInView ? { opacity: 1, y: 0 } : {}}
+            animate={syncSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
@@ -401,7 +497,7 @@ export default function Home() {
                 Schedule Integrity
               </span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 mb-6">
               Signature-Based Schedule Sync
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -410,19 +506,50 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <SyncSchedulingVisualization inView={syncInView} />
+          <SyncSchedulingVisualization inView={syncSection.inView} />
+        </div>
+      </motion.section>
+
+      {/* Command Propagation Section */}
+      <motion.section
+        ref={commandSection.ref}
+        className="relative py-32 px-8 bg-gradient-to-b from-transparent via-sky-950/10 to-transparent"
+      >
+        <div className="container mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={commandSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-3 px-6 py-3 mb-6 rounded-full card-glass border border-cyan-500/30">
+              <Signal className="w-5 h-5 text-cyan-400" />
+              <span className="text-cyan-300 font-medium">Live Command Flow</span>
+            </div>
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-teal-400 mb-6">
+              Command Propagation Visualizer
+            </h2>
+            <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
+              When you send a command, watch it travel Frontend → Backend → MQTT Broker → Panel with millisecond timings.
+            </p>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto mt-4">
+              Animated paths display acknowledgments coming back across the LoRa mesh so you can prove responsiveness in live demos.
+            </p>
+          </motion.div>
+
+          <CommandPropagationVisualizer inView={commandSection.inView} />
         </div>
       </motion.section>
 
       {/* Redundancy Section */}
       <motion.section
-        ref={redundancyRef}
+        ref={redundancySection.ref}
         className="relative py-32 px-8 bg-gradient-to-b from-transparent via-green-950/10 to-transparent"
       >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
-            animate={redundancyInView ? { opacity: 1, y: 0 } : {}}
+            animate={redundancySection.hasAnimated ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
@@ -430,7 +557,7 @@ export default function Home() {
               <Shield className="w-5 h-5 text-green-400" />
               <span className="text-green-300 font-medium">Redundancy</span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-6">
               Automatic Failover
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -438,19 +565,19 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <RedundancyVisualization inView={redundancyInView} />
+          <RedundancyVisualization inView={redundancySection.inView} />
         </div>
       </motion.section>
 
       {/* Benefits Section */}
       <motion.section
-        ref={benefitsRef}
+        ref={benefitsSection.ref}
         className="relative py-32 px-8 bg-gradient-to-b from-transparent via-orange-950/10 to-transparent"
       >
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
-            animate={benefitsInView ? { opacity: 1, y: 0 } : {}}
+            animate={benefitsSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
             className="text-center mb-20"
           >
@@ -460,7 +587,7 @@ export default function Home() {
                 Business Impact
               </span>
             </div>
-            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 mb-6">
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 mb-6">
               Key Benefits
             </h2>
             <p className="text-2xl text-gray-300 max-w-3xl mx-auto">
@@ -468,7 +595,7 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <InteractiveBenefits inView={benefitsInView} />
+          <InteractiveBenefits inView={benefitsSection.inView} />
         </div>
       </motion.section>
 
