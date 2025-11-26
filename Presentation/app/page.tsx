@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import {
@@ -81,91 +81,11 @@ export default function Home() {
   const syncSection = useSectionVisibility({ threshold: 0.2 });
   const redundancySection = useSectionVisibility({ threshold: 0.2 });
   const benefitsSection = useSectionVisibility({ threshold: 0.2 });
-  const autoScrollFrameRef = useRef<number | null>(null);
-  const autoScrollLastTimeRef = useRef<number | null>(null);
-  const inactivityTimerRef = useRef<number | null>(null);
 
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const AUTO_SCROLL_DELAY = 12000; // 12s of inactivity
-    const AUTO_SCROLL_SPEED = 0.8; // pixels per ms (~48px per second)
-
-    const stopAutoScroll = () => {
-      if (autoScrollFrameRef.current) {
-        window.cancelAnimationFrame(autoScrollFrameRef.current);
-        autoScrollFrameRef.current = null;
-        autoScrollLastTimeRef.current = null;
-      }
-    };
-
-    const autoScrollStep = (timestamp: number) => {
-      if (autoScrollLastTimeRef.current === null) {
-        autoScrollLastTimeRef.current = timestamp;
-      }
-      const delta = timestamp - autoScrollLastTimeRef.current;
-      autoScrollLastTimeRef.current = timestamp;
-
-      window.scrollBy(0, delta * (AUTO_SCROLL_SPEED / 16));
-
-      const doc = document.documentElement;
-      const reachedBottom =
-        window.innerHeight + window.scrollY >= doc.scrollHeight - 2;
-      if (reachedBottom) {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-
-      autoScrollFrameRef.current = window.requestAnimationFrame(autoScrollStep);
-    };
-
-    const startAutoScroll = () => {
-      if (autoScrollFrameRef.current) return;
-      autoScrollLastTimeRef.current = null;
-      autoScrollFrameRef.current = window.requestAnimationFrame(autoScrollStep);
-    };
-
-    const resetInactivityTimer = () => {
-      if (inactivityTimerRef.current) {
-        window.clearTimeout(inactivityTimerRef.current);
-      }
-      inactivityTimerRef.current = window.setTimeout(() => {
-        startAutoScroll();
-      }, AUTO_SCROLL_DELAY);
-    };
-
-    const handleUserActivity = () => {
-      stopAutoScroll();
-      resetInactivityTimer();
-    };
-
-    const events: Array<keyof WindowEventMap> = [
-      "mousemove",
-      "mousedown",
-      "touchstart",
-      "wheel",
-      "keydown",
-    ];
-
-    events.forEach((event) =>
-      window.addEventListener(event, handleUserActivity, { passive: true })
-    );
-
-    resetInactivityTimer();
-
-    return () => {
-      events.forEach((event) =>
-        window.removeEventListener(event, handleUserActivity)
-      );
-      if (inactivityTimerRef.current) {
-        window.clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
-      stopAutoScroll();
-    };
-  }, []);
+  // Auto scroll removed per latest requirements; content remains user-driven.
 
   return (
     <div className="relative min-h-screen bg-gray-950 overflow-x-hidden">

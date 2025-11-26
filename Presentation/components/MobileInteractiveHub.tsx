@@ -417,24 +417,6 @@ const MobileInteractiveHub = () => {
   return (
     <div className="space-y-10">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="rounded-4xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 text-center"
-      >
-        <p className="text-sm uppercase tracking-[0.4em] text-cyan-200">
-          Mobile Visualization Lab
-        </p>
-        <h2 className="text-3xl font-bold text-white mt-2">
-          See CCMS stories come alive
-        </h2>
-        <p className="text-gray-300 mt-3">
-          Live timelines, radial health views, and mesh heatmaps built for
-          tablets — no minigames, just real telemetry.
-        </p>
-      </motion.div>
-
-      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}

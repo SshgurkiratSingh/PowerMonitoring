@@ -24,24 +24,6 @@ export default function MobilePlayground() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
-        <motion.section
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="rounded-4xl border border-cyan-500/20 bg-gradient-to-br from-slate-900/70 to-slate-900/40 p-8 text-center"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-sm text-cyan-200">
-            <Signal className="w-4 h-4" /> Visualization Mode
-          </div>
-          <h1 className="text-4xl font-black mt-6">
-            Mobile Visualization Studio
-          </h1>
-          <p className="text-gray-300 text-lg mt-4">
-            Built for 12-inch tablets and phones — every module loops live
-            telemetry, timelines, and heatmaps for quick demos.
-          </p>
-        </motion.section>
-
         <MobileInteractiveHub />
       </main>
     </div>
