@@ -39,6 +39,7 @@ import SyncSchedulingVisualization from "@/components/SyncSchedulingVisualizatio
 import RedundancyVisualization from "@/components/RedundancyVisualization";
 import GlobalPanelMap from "@/components/GlobalPanelMap";
 import CommandPropagationVisualizer from "@/components/CommandPropagationVisualizer";
+import HardwareFlowDiagram from "@/components/HardwareFlowDiagram";
 
 const useSectionVisibility = (options?: IntersectionOptions) => {
   const [ref, inView] = useInView({
@@ -74,6 +75,7 @@ export default function Home() {
     triggerOnce: true,
   });
   const archSection = useSectionVisibility({ threshold: 0.2 });
+  const hardwareSection = useSectionVisibility({ threshold: 0.2 });
   const networkSection = useSectionVisibility({ threshold: 0.2 });
   const pipelineSection = useSectionVisibility({ threshold: 0.2 });
   const commSection = useSectionVisibility({ threshold: 0.2 });
@@ -324,6 +326,37 @@ export default function Home() {
           </motion.div>
 
           <Premium3DArchitecture inView={archSection.inView} />
+        </div>
+      </motion.section>
+
+      {/* Hardware Flow Section */}
+      <motion.section
+        ref={hardwareSection.ref}
+        className="relative py-32 px-8 bg-gradient-to-b from-transparent via-slate-950/10 to-transparent"
+      >
+        <div className="container mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={hardwareSection.hasAnimated ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-3 px-6 py-3 mb-6 rounded-full card-glass border border-emerald-500/30">
+              <CircuitBoard className="w-5 h-5 text-emerald-400" />
+              <span className="text-emerald-300 font-medium">
+                Hardware Telemetry Flow
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 mb-6">
+              RS485 → ESP32 → Mesh Journey
+            </h2>
+            <p className="text-2xl text-gray-300 max-w-4xl mx-auto">
+              See how power conditioning, Modbus polling, sensor fusion, RTC, schedules,
+              dual-mode comms, and alerting tie together before data hits the cloud.
+            </p>
+          </motion.div>
+
+          <HardwareFlowDiagram />
         </div>
       </motion.section>
 

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Signal, Smartphone } from "lucide-react";
+import { ArrowLeft, CircuitBoard, Smartphone } from "lucide-react";
 import MobileInteractiveHub from "@/components/MobileInteractiveHub";
+import HardwareFlowDiagram from "@/components/HardwareFlowDiagram";
 
 export default function MobilePlayground() {
   return (
@@ -25,6 +26,30 @@ export default function MobilePlayground() {
 
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
         <MobileInteractiveHub />
+
+        <motion.section
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="rounded-4xl border border-emerald-500/30 bg-slate-950/80 p-6"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-sm text-emerald-200">
+            <CircuitBoard className="w-4 h-4" />
+            Hardware Telemetry Flow
+          </div>
+          <h2 className="text-2xl font-bold text-white mt-4">
+            RS485 → ESP32 → Mesh, optimized for field demos
+          </h2>
+          <p className="text-gray-300 mt-3 text-sm">
+            Quick reference of how the power stack, Modbus reads, sensor sweep,
+            automation core, and dual comms synchronize before every alert hits
+            the server.
+          </p>
+
+          <div className="mt-6 -mx-2 sm:mx-0">
+            <HardwareFlowDiagram />
+          </div>
+        </motion.section>
       </main>
     </div>
   );
